@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="A fast decision desk for your stock portfolio: add your positions, set how much each side of the analysis counts, and backtest it against buy and hold and other strategies.">
+    <title>Analyze · FastValue</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 17l5-6 4 4 8-10' fill='none' stroke='%234f8ff0' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <script src="/static/theme.js"></script>
+    <link rel="preload" href="/static/vendor/inter/inter-v20-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="{{ static_url('style.css') }}">
+    <script defer src="{{ static_url('vendor/lightweight-charts-4.1.1.standalone.production.js') }}"></script>
+    <script defer src="{{ static_url('app.js') }}"></script>
+</head>
+<body>
+    <a class="btn skip-link" href="#main">Skip to content</a>
+    <header class="topbar">
+        <div class="topbar-inner">
+            <div class="brand">
+                <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l5-6 4 4 8-10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="brand-name">FastValue</span>
+                <span class="brand-sub">Decision Desk</span>
+            </div>
+            <nav class="tabs" role="tablist" aria-label="Views">
+                <button class="tab active" role="tab" id="tab-analyze" aria-controls="view-analyze" data-view="analyze" aria-selected="true">Analyze</button>
+                <button class="tab" role="tab" id="tab-watchlist" aria-controls="view-watchlist" data-view="watchlist" aria-selected="false">Watchlist</button>
+                <button class="tab" role="tab" id="tab-portfolio" aria-controls="view-portfolio" data-view="portfolio" aria-selected="false">Portfolio</button>
+                <button class="tab" role="tab" id="tab-weights" aria-controls="view-weights" data-view="weights" aria-selected="false">Weights</button>
+                <button class="tab" role="tab" id="tab-backtest" aria-controls="view-backtest" data-view="backtest" aria-selected="false">Backtest</button>
+            </nav>
+            <div class="topbar-right">
+                <span class="market-pill term quiet tip-end" id="market-pill" tabindex="0" data-tip="US regular session, exchange holidays not modeled">Loading</span>
+                <button class="icon-btn" id="theme-toggle" type="button" aria-label="Switch to light theme" title="Switch to light theme">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" fill="currentColor"/></svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="toast-host" id="toast-host"></div>
+    <div id="sr-status" class="sr-only" role="status" aria-live="polite"></div>
+
+    <div class="warning server-down" id="server-down" role="alert" hidden>
+        <strong>FastValue is not answering.</strong> It runs in the Terminal window you started it from: if that window was closed, start FastValue again. This page reconnects by itself.
+        <div class="head-actions"><button class="btn btn-sm" type="button" id="server-retry">Try again</button></div>
+    </div>
+
+    <main class="page" id="main" tabindex="-1">
+        <h1 class="sr-only" id="view-title">Analyze</h1>
+        <!-- ===================== ANALYZE ===================== -->
+        <section class="view active" id="view-analyze" role="tabpanel" aria-labelledby="tab-analyze">
+            <form class="toolbar card" id="analyze-form" autocomplete="off">
+                <div class="field grow">
+                    <label for="analyze-ticker">Ticker</label>
+                    <input id="analyze-ticker" class="input input-ticker" spellcheck="false" maxlength="12" placeholder="Ticker, e.g. AAPL or SAP.DE" autocapitalize="characters" autocomplete="off" enterkeyhint="go" aria-describedby="analyze-notice">
+                </div>
+                <div class="field" id="analyze-refresh-field" hidden>
+                    <label for="analyze-refresh">Refresh</label>
+                    <select id="analyze-refresh" class="input">
+                        <option value="0">Off</option>
+                        <option value="60">Every minute</option>
+                        <option value="300">Every 5 minutes</option>
+                        <option value="900">Every 15 minutes</option>
+                    </select>
+                </div>
+                <button class="btn" id="analyze-button" type="submit" disabled data-init-gate>Analyze</button>
+            </form>
+            <div class="warnings" id="analyze-notice" aria-live="polite"></div>
+
+            <div class="empty-state" id="analyze-empty">
+                <h2>See what to do with the stocks you own</h2>
+                <p>FastValue gives each company an <span class="term" tabindex="0" data-tip="Owner score: how good the business is to own for 12 months, from its fundamentals (valuation, returns on capital, cash flow) and how management treats shareholders. From -100 to +100, it is the verdict. The entry and exit levels set in the Weights tab turn it into actions in the review and the backtest.">owner score</span> from -100 to +100, built from its fundamentals and how management treats shareholders, and shows the points behind it. Add your portfolio and it tells you, holding by holding, what to do now: exit, trim, look at, add or nothing to do. <span class="term" tabindex="0" data-tip="Entry timing: a second score, from price and the market (trend, pullbacks, volume, options activity, the market regime and the VIX), that says when to buy and how much. It never changes the owner score.">Entry timing</span> only says when, and how much, to buy.</p>
+                <div class="empty-cta">
+                    <button class="btn btn-primary" type="button" id="empty-cta" data-goto="portfolio">Add your portfolio</button>
+                    <span class="muted small">or analyze one company above</span>
+                </div>
+                <p class="muted">Your broker export is read on this computer and its personal fields are dropped as it is read. Missing data is flagged, never estimated. Funds, indexes, utilities and REITs are not rated.</p>
+            </div>
+
+            <div class="results" id="analyze-results" hidden>
+                <div class="card hero" id="hero"></div>
+
+                <div class="grid-2">
+                    <div class="card">
+                        <div class="card-head">
+                            <h3>Why this score</h3>
+                            <span class="muted small" id="contrib-caption"></span>
+                        </div>
+                        <div id="contrib-chart" class="contrib-chart"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>Risk reference</h3><span class="muted small" id="plan-method"></span></div>
+                        <div class="stat-row" id="plan-grid"></div>
+                        <div class="card-head sub"><h4>Key levels</h4></div>
+                        <div class="levels-list" id="levels-list" tabindex="0" role="region" aria-label="Key levels"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-head">
+                        <h3 id="price-chart-title">Price</h3>
+                        <div class="legend" id="price-legend"></div>
+                    </div>
+                    <div class="chart" id="analyze-price-chart"></div>
+                </div>
+
+                <div class="card" id="history-card" hidden>
+                    <div class="card-head">
+                        <h3>Score history</h3>
+                        <span class="muted small">Every recorded analysis of this ticker</span>
+                    </div>
+                    <div class="chart chart-sm" id="history-chart"></div>
+                </div>
+
+                <div class="card" id="company-card" hidden>
+                    <div class="card-head">
+                        <h3>Company <span class="info" tabindex="0" role="note" aria-label="The company's reported figures from its SEC filings, the value checks you use, its latest filings and the industry outlook. Read for context only: none of it changes the score." data-tip="The company's reported figures from its SEC filings, the value checks you use, its latest filings and the industry outlook. Read for context only: none of it changes the score.">i</span></h3>
+                        <span class="muted small" id="company-caption"></span>
+                    </div>
+                    <div class="co-bar">
+                        <div class="segmented" id="company-views" role="tablist" aria-label="Company views">
+                            <button class="seg active" type="button" role="tab" data-co-view="financials">Financials</button>
+                            <button class="seg" type="button" role="tab" data-co-view="checklist">Value checklist</button>
+                            <button class="seg" type="button" role="tab" data-co-view="filings">Filings</button>
+                            <button class="seg" type="button" role="tab" data-co-view="industry">Industry</button>
+                        </div>
+                        <div class="segmented seg-sm" id="company-period" role="group" aria-label="Period">
+                            <button class="seg active" type="button" data-co-period="annual">Annual</button>
+                            <button class="seg" type="button" data-co-period="quarterly">Quarterly</button>
+                        </div>
+                    </div>
+                    <div id="company-body"></div>
+                </div>
+
+                <div class="section-head">
+                    <h3>How the score was made<span class="info" tabindex="0" role="note" aria-label="Owner agents feed the owner score, the verdict. Timing agents feed entry timing, which only informs when and how much to buy." data-tip="Owner agents feed the owner score, the verdict. Timing agents feed entry timing, which only informs when and how much to buy.">i</span></h3>
+                    <span class="muted small">Select a step to see its rows.</span>
+                </div>
+                <div class="card flow-card">
+                    <div class="flow-scroll"><div class="flow" id="flow-diagram"></div></div>
+                    <div class="flow-detail" id="flow-detail"></div>
+                </div>
+
+                <div class="agent-groups" id="agent-groups"></div>
+            </div>
+        </section>
+
+        <!-- ===================== WATCHLIST ===================== -->
+        <section class="view" id="view-watchlist" role="tabpanel" aria-labelledby="tab-watchlist" hidden>
+            <div class="card">
+                <div class="card-head">
+                    <h3>Watchlist</h3>
+                    <span class="muted small">Ranked by owner score; changes since the last scan are flagged.</span>
+                    <span class="muted small" id="watch-regime"></span>
+                    <span class="muted small" id="watch-last"></span>
+                </div>
+                <div class="chip-editor" id="watch-chips"></div>
+                <form class="toolbar-inline" id="watch-add-form" autocomplete="off">
+                    <label class="inline-label" for="watch-add-input">Add tickers</label>
+                    <input id="watch-add-input" class="input input-ticker" placeholder="e.g. AAPL, KO" spellcheck="false" aria-describedby="watch-add-msg">
+                    <button class="btn" type="submit" disabled data-init-gate>Add</button>
+                    <span class="spacer"></span>
+                    <label class="inline-label" for="watch-refresh">Auto scan</label>
+                    <select id="watch-refresh" class="input input-compact">
+                        <option value="0">Off</option>
+                        <option value="300">Every 5 minutes</option>
+                        <option value="900">Every 15 minutes</option>
+                        <option value="3600">Every hour</option>
+                    </select>
+                    <span class="hint" id="watch-next"></span>
+                    <button class="btn btn-primary" id="watch-scan-button" type="button">Scan now</button>
+                </form>
+                <p class="hint" id="watch-add-msg" role="status" hidden></p>
+                <p class="hint" id="watch-prescan" hidden></p>
+                <p class="hint" id="watch-slow-hint" role="status" hidden></p>
+                <div class="warnings" id="watch-scan-error" aria-live="polite"></div>
+            </div>
+            <div class="stat-row" id="watch-summary" hidden></div>
+            <div class="card" id="watch-results" hidden>
+                <div class="watch-strip" id="watch-strip"></div>
+                <div class="segmented seg-sm watch-view-switch" id="watch-view" data-seg="toggle" aria-label="Columns shown">
+                    <button type="button" class="seg active" data-watch-view="summary">Summary</button>
+                    <button type="button" class="seg" data-watch-view="agents">Agent scores</button>
+                </div>
+                <div class="table-wrap">
+                    <table class="table" id="watch-table"></table>
+                </div>
+                <div class="notes" id="watch-notes"></div>
+                <div class="warnings" id="watch-errors"></div>
+                <p class="muted small" id="watch-footnote"></p>
+            </div>
+        </section>
+
+        <!-- ===================== PORTFOLIO ===================== -->
+        <section class="view" id="view-portfolio" role="tabpanel" aria-labelledby="tab-portfolio" hidden>
+            <div class="card" id="pf-card">
+                <div class="empty-state left" id="pf-empty" hidden>
+                    <h2>Bring in your portfolio</h2>
+                    <p>Import the transaction export from your broker and FastValue reviews every holding: what to exit, trim, look at or add.</p>
+                </div>
+                <div class="card-head">
+                    <h3 id="pf-card-title">Holdings and cash <span class="info" tabindex="0" role="note" aria-label="Kept only on this machine. Review runs the owner-first analysis on every holding, then looks at them together: allocation, risk, winners and losers, cycle and news." data-tip="Kept only on this machine. Review runs the owner-first analysis on every holding, then looks at them together: allocation, risk, winners and losers, cycle and news.">i</span></h3>
+                    <div class="head-actions">
+                        <input type="file" id="pf-import-file" accept=".csv,text/csv" hidden>
+                        <div class="progress" id="pf-import-progress" hidden>
+                            <div class="progress-track"><span class="progress-fill" id="pf-import-progress-fill"></span></div>
+                            <span class="muted small" id="pf-import-progress-text" role="status"></span>
+                        </div>
+                        <select id="pf-import-broker" class="input input-compact" aria-label="Broker of the export"></select>
+                        <button class="btn" id="pf-import-button" type="button" disabled data-init-gate>Import export</button>
+                        <button class="btn btn-ghost" id="pf-import-remove" type="button" hidden>Remove the import</button>
+                        <button class="btn btn-primary" id="pf-review-button" type="button" disabled data-init-gate>Review portfolio</button>
+                        <button class="btn btn-ghost" id="pf-type-in" type="button" hidden>Type holdings in instead</button>
+                    </div>
+                </div>
+                <p class="hint" id="pf-import-hint" hidden></p>
+                <details class="drawer" id="pf-template-help" hidden>
+                    <summary>How to fill it in</summary>
+                    <div class="drawer-body">
+                        <p class="hint">One row per booking, UTF-8, comma separated, columns in any order. The type sets the sign of the amount, so 1000 and -1000 both work for a buy. EUR accounts only for now.</p>
+                        <div class="table-wrap"><table class="table compact stack" id="pf-template-table" data-label="CSV columns">
+                            <thead><tr><th>Column</th><th>What goes in</th><th>Example</th></tr></thead>
+                            <tbody>
+                                <tr><td class="mono span">date</td><td data-label="What goes in">YYYY-MM-DD, a time is optional.</td><td class="mono" data-label="Example">2024-01-03</td></tr>
+                                <tr><td class="mono span">type</td><td data-label="What goes in">deposit, withdrawal, card, buy, sell, dividend, interest, fee, tax, transfer_in, transfer_out or perk.</td><td class="mono" data-label="Example">buy</td></tr>
+                                <tr><td class="mono span">amount</td><td data-label="What goes in">The cash of the row. The type sets the sign.</td><td class="mono" data-label="Example">-1000</td></tr>
+                                <tr><td class="mono span">isin</td><td data-label="What goes in">The 12-character code, for buys, sells, dividends and transfers.</td><td class="mono" data-label="Example">US0000000000</td></tr>
+                                <tr><td class="mono span">shares, price</td><td data-label="What goes in">For buys, sells and transfers; price in EUR.</td><td class="mono" data-label="Example">10, 100</td></tr>
+                                <tr><td class="mono span">fee, tax</td><td data-label="What goes in">The row's costs.</td><td class="mono" data-label="Example">1</td></tr>
+                                <tr><td class="mono span">asset_class</td><td data-label="What goes in">Optional: stock, fund, derivative, bond or crypto.</td><td class="mono" data-label="Example">fund</td></tr>
+                                <tr><td class="mono span">plan</td><td data-label="What goes in">Optional: yes for savings-plan buys.</td><td class="mono" data-label="Example">yes</td></tr>
+                            </tbody>
+                        </table></div>
+                    </div>
+                </details>
+                <div class="warnings" id="pf-import-error" role="alert"></div>
+                <p class="hint" id="pf-slow-hint" role="status" hidden></p>
+                <details class="drawer" id="pf-positions-drawer" open>
+                    <summary id="pf-positions-summary">Your holdings</summary>
+                    <div class="drawer-body"><div class="table-wrap"><table class="table compact stack" id="pf-positions"></table></div></div>
+                </details>
+                <form class="toolbar-inline labelled" id="pf-add-form" autocomplete="off" novalidate>
+                    <div class="field">
+                        <label for="pf-add-ticker">Ticker</label>
+                        <input id="pf-add-ticker" class="input input-ticker input-compact" placeholder="AAPL" maxlength="12" spellcheck="false" required aria-describedby="pf-add-ticker-error">
+                        <p class="hint neg" id="pf-add-ticker-error" role="alert" hidden></p>
+                    </div>
+                    <div class="field">
+                        <label for="pf-add-shares">Shares</label>
+                        <input id="pf-add-shares" class="input input-compact pf-num" type="number" inputmode="decimal" step="any" min="0" placeholder="10" required>
+                    </div>
+                    <div class="field">
+                        <label for="pf-add-cost">Average cost (EUR)</label>
+                        <input id="pf-add-cost" class="input input-compact pf-num" type="number" inputmode="decimal" step="any" min="0" placeholder="152.40" required>
+                    </div>
+                    <div class="field">
+                        <label for="pf-add-opened">Date opened (optional)</label>
+                        <input id="pf-add-opened" class="input input-compact" type="date">
+                    </div>
+                    <button class="btn" type="submit" disabled data-init-gate>Save holding</button>
+                </form>
+                <p class="hint neg" id="pf-add-error" role="alert" hidden></p>
+                <div class="warnings" id="pf-add-warning" role="alert"></div>
+                <form class="toolbar-inline" id="pf-cash-form" autocomplete="off" novalidate>
+                    <label class="inline-label" for="pf-currency">Currency</label>
+                    <select id="pf-currency" class="input input-compact" aria-describedby="pf-currency-hint">
+                        <option value="EUR">EUR</option>
+                        <option value="USD">USD</option>
+                        <option value="GBP">GBP</option>
+                        <option value="CHF">CHF</option>
+                    </select>
+                    <span class="hint" id="pf-currency-hint" hidden></span>
+                    <label class="inline-label" for="pf-cash">Cash</label>
+                    <input id="pf-cash" class="input input-compact pf-num" type="number" step="any" min="0" placeholder="0" aria-describedby="pf-cash-error">
+                    <button class="btn" id="pf-cash-save" type="submit" disabled data-init-gate>Save cash</button>
+                </form>
+                <p class="hint neg" id="pf-cash-error" role="alert" hidden></p>
+            </div>
+            <div class="card" id="pf-todo" hidden>
+                <div class="card-head">
+                    <h3>What to do now <span class="info" tabindex="0" role="note" aria-label="Exit: the owner score is at or below the exit level, or the company shows a red flag. Trim: one company, fund or commodity above the 20% cap; broad index funds have no cap. Look at: the thesis moved, the owner score rests on thin data, or a fall deeper than the holding's usual yearly swing; a prompt to look, not a trade. Add: owner score at or above the entry level, below the 10% starting size, cash available and a pullback inside an uptrend." data-tip="Exit: the owner score is at or below the exit level, or the company shows a red flag. Trim: one company, fund or commodity above the 20% cap; broad index funds have no cap. Look at: the thesis moved, the owner score rests on thin data, or a fall deeper than the holding's usual yearly swing; a prompt to look, not a trade. Add: owner score at or above the entry level, below the 10% starting size, cash available and a pullback inside an uptrend.">i</span></h3>
+                    <div class="head-actions">
+                        <span class="muted small" id="pf-todo-caption"></span>
+                        <button class="btn btn-sm" id="pf-rereview" type="button">Review again</button>
+                    </div>
+                </div>
+                <p class="hint" id="pf-todo-settings"></p>
+                <div class="alert-list" id="pf-todo-changes"></div>
+                <div id="pf-todo-groups"></div>
+                <div id="pf-plan">
+                    <div class="card-head sub">
+                        <h4>Your plan and portfolio checks <span class="info" tabindex="0" role="note" aria-label="Your plan is the share of what you have invested that you want in core funds (broad index funds) and a yearly budget for derivatives. The review checks how far you are from it. Kept only on this machine." data-tip="Your plan is the share of what you have invested that you want in core funds (broad index funds) and a yearly budget for derivatives. The review checks how far you are from it. Kept only on this machine.">i</span></h4>
+                        <button class="btn btn-sm" id="pf-plan-edit" type="button">Edit plan</button>
+                    </div>
+                    <p class="hint" id="pf-plan-line"></p>
+                    <form class="toolbar-inline" id="pf-plan-form" autocomplete="off" hidden>
+                        <label class="inline-label" for="pf-plan-core">Core share</label>
+                        <input id="pf-plan-core" class="input input-compact pf-num" type="number" step="any" min="0" max="100" placeholder="% of invested">
+                        <label class="inline-label" for="pf-plan-budget">Derivatives budget a year</label>
+                        <input id="pf-plan-budget" class="input input-compact pf-num" type="number" step="any" min="0" placeholder="amount">
+                        <button class="btn btn-primary btn-sm" type="submit">Save plan</button>
+                        <button class="btn btn-ghost btn-sm" id="pf-plan-cancel" type="button">Cancel</button>
+                    </form>
+                    <div class="stat-row" id="pf-plan-split"></div>
+                    <div class="alert-list" id="pf-alerts"></div>
+                </div>
+                <div id="pf-todo-room"></div>
+                <details class="drawer" id="pf-todo-rest" hidden>
+                    <summary id="pf-todo-rest-summary">Nothing to do</summary>
+                    <div class="drawer-body" id="pf-todo-rest-body"></div>
+                </details>
+            </div>
+            <form class="card toolbar" id="pf-candidate-form" autocomplete="off">
+                <div class="field grow">
+                    <label for="pf-candidate-ticker">Check a ticker before you buy</label>
+                    <input id="pf-candidate-ticker" class="input input-ticker" placeholder="Ticker" maxlength="12" spellcheck="false" aria-describedby="pf-candidate-hint">
+                    <p class="hint" id="pf-candidate-hint">For a ticker you hold, it shows the holding's risk now.</p>
+                </div>
+                <button class="btn" id="pf-candidate-button" type="submit" disabled data-init-gate>Check</button>
+            </form>
+            <div id="pf-candidate-notice" role="status"></div>
+            <div class="card" id="pf-candidate" hidden></div>
+            <div class="card" id="pf-monitor" hidden>
+                <div class="card-head">
+                    <h3>Daily check</h3>
+                    <span class="muted small grow" id="pf-monitor-caption"></span>
+                </div>
+                <div class="head-actions" id="pf-monitor-actions"></div>
+                <div class="alert-list" id="pf-monitor-alerts"></div>
+                <details class="drawer" id="pf-monitor-earlier" hidden>
+                    <summary id="pf-monitor-earlier-summary">Earlier alerts</summary>
+                    <div class="drawer-body"><div class="alert-list" id="pf-monitor-earlier-alerts"></div></div>
+                </details>
+            </div>
+            <div class="pf-dash" id="pf-dash" hidden>
+                <div class="card pf-dash-head">
+                    <div class="segmented" id="pf-sections" role="tablist" aria-label="Portfolio review sections">
+                        <button class="seg active" type="button" role="tab" data-pf-section="overview">Overview</button>
+                        <button class="seg" type="button" role="tab" data-pf-section="actions">Holdings</button>
+                        <button class="seg" type="button" role="tab" data-pf-section="risk">Risk</button>
+                        <button class="seg" type="button" role="tab" data-pf-section="movers">Movers</button>
+                        <button class="seg" type="button" role="tab" data-pf-section="cycle">Cycle &amp; news</button>
+                    </div>
+                    <span class="muted small grow" id="pf-review-caption"></span>
+                </div>
+                <!-- Overview: where the money is, how today's mix has done -->
+                <div class="pf-pane" data-pane="overview">
+                    <div class="stat-row" id="pf-summary"></div>
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-head">
+                                <h3>Allocation</h3>
+                                <div class="segmented seg-sm" id="pf-alloc-dims" role="group" data-seg="toggle" aria-label="Allocation by"></div>
+                            </div>
+                            <div class="donut-wrap">
+                                <div class="donut" id="pf-donut"></div>
+                                <div class="table-wrap donut-table"><table class="table compact" id="pf-alloc-table"></table></div>
+                            </div>
+                            <p class="hint" id="pf-alloc-hint"></p>
+                        </div>
+                        <div class="card">
+                            <div class="card-head">
+                                <h3>Performance <span class="info" tabindex="0" role="note" aria-label="MSCI World, S&amp;P 500 and Nasdaq 100 as a European investor can buy them: the accumulating iShares UCITS funds IWDA, CSPX and CNDX (London, in dollars), converted to EUR at the ECB rate of each day. They reinvest dividends after US withholding tax. SPY and QQQ follow the same S&amp;P 500 and Nasdaq 100 but are US funds that EU brokers do not sell to private investors, and their price alone leaves out the dividends." data-tip="MSCI World, S&amp;P 500 and Nasdaq 100 as a European investor can buy them: the accumulating iShares UCITS funds IWDA, CSPX and CNDX (London, in dollars), converted to EUR at the ECB rate of each day. They reinvest dividends after US withholding tax. SPY and QQQ follow the same S&amp;P 500 and Nasdaq 100 but are US funds that EU brokers do not sell to private investors, and their price alone leaves out the dividends.">i</span></h3>
+                                <div class="segmented seg-sm" id="pf-perf-range" role="group" data-seg="toggle" aria-label="Period"></div>
+                            </div>
+                            <div class="legend" id="pf-perf-legend"></div>
+                            <div class="chart chart-sm" id="pf-perf-chart"></div>
+                            <div class="progress" id="pf-perf-progress" hidden>
+                                <div class="progress-track"><span class="progress-fill" id="pf-perf-progress-fill"></span></div>
+                                <span class="muted small" id="pf-perf-progress-text"></span>
+                            </div>
+                            <div class="table-wrap"><table class="table compact stack" id="pf-perf-table"></table></div>
+                            <p class="hint" id="pf-perf-hint"></p>
+                            <p class="hint" id="pf-perf-acct" hidden></p>
+                            <p class="hint" id="pf-perf-note" hidden></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Holdings: every holding by class, with its action and reason -->
+                <div class="pf-pane" data-pane="actions" hidden>
+                    <div class="card" id="pf-review">
+                        <div class="card-head"><h3>Holdings by class <span class="info" tabindex="0" role="note" aria-label="Every holding by class, with its action and one reason. Core funds are broad index and bond funds: no owner score and no position cap. Other funds and metals keep the 20% cap. Stocks are judged on the owner score. The trigger of From high is 25% or the holding's usual yearly swing if larger." data-tip="Every holding by class, with its action and one reason. Core funds are broad index and bond funds: no owner score and no position cap. Other funds and metals keep the 20% cap. Stocks are judged on the owner score. The trigger of From high is 25% or the holding's usual yearly swing if larger.">i</span></h3><div class="segmented seg-sm" id="pf-action-filter" role="tablist" aria-label="Show"></div></div>
+                        <div id="pf-review-table"></div>
+                        <p class="hint">Open a holding for its evidence: risk, news, currency effect and your notes.</p>
+                    </div>
+                    <div class="card" id="pf-detail" hidden></div>
+                </div>
+
+                <!-- Risk: where the swings come from, what moves together, what you are exposed to -->
+                <div class="pf-pane" data-pane="risk" hidden>
+                    <div class="card" id="pf-risk-alerts-card" hidden>
+                        <div class="card-head"><h3>Worth knowing</h3><span class="muted small">Information, nothing to do right now</span></div>
+                        <div class="alert-list" id="pf-risk-alerts"></div>
+                    </div>
+                    <div class="stat-row" id="pf-risk-stats"></div>
+                    <div class="card">
+                        <div class="card-head">
+                            <h3>Where the risk comes from</h3>
+                            <span class="muted small"><span class="term" tabindex="0" data-tip="Each holding's part of the portfolio's ups and downs: how much it moves and how much it moves with the rest. The shares add up to 100%. A holding with a bigger share of risk than of value swings the portfolio more than its size suggests.">Share of risk</span> against share of value, largest risk first</span>
+                        </div>
+                        <div class="legend" id="pf-riskbar-legend"></div>
+                        <div class="hbars" id="pf-riskbars"></div>
+                        <p class="hint" id="pf-risk-hint"></p>
+                    </div>
+                    <div class="grid-2" id="pf-corr-grid">
+                        <div class="card">
+                            <div class="card-head">
+                                <h3>What moves together</h3>
+                                <span class="muted small"><span class="term" tabindex="0" data-tip="Correlation of weekly returns over two years, in your currency. 1: always move together. 0: unrelated. Negative: tend to move in opposite directions. Weekly rather than daily, because markets that close at different hours (Europe, US) react to the same news on different days.">Weekly correlation</span>, similar holdings side by side</span>
+                            </div>
+                            <div class="heatmap" id="pf-heatmap"></div>
+                            <div class="heat-scale" id="pf-heat-scale"></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-head"><h3>Pairs and diversifiers</h3></div>
+                            <div class="table-wrap"><table class="table compact stack" id="pf-pairs"></table></div>
+                            <div class="card-head sub"><h4>How each holding moves with the rest</h4></div>
+                            <div class="table-wrap"><table class="table compact" id="pf-diversifiers"></table></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head">
+                            <h3>Exposure</h3>
+                            <div class="segmented seg-sm" id="pf-exposure-dims" role="group" data-seg="toggle" aria-label="Exposure by"></div>
+                        </div>
+                        <div class="table-wrap"><table class="table compact stack" id="pf-exposure-table"></table></div>
+                        <p class="hint" id="pf-exposure-hint"></p>
+                    </div>
+                </div>
+
+                <!-- Winners and losers -->
+                <div class="pf-pane" data-pane="movers" hidden>
+                    <div class="stat-row" id="pf-mover-stats"></div>
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-head"><h3>Since you bought</h3><span class="muted small">Price gain plus dividends received, in your currency</span></div>
+                            <div class="dbars" id="pf-since-bars"></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-head">
+                                <h3>Over the last</h3>
+                                <div class="segmented seg-sm" id="pf-mover-periods" role="group" data-seg="toggle" aria-label="Period"></div>
+                            </div>
+                            <div class="dbars" id="pf-period-bars"></div>
+                            <p class="hint" id="pf-period-hint"></p>
+                        </div>
+                    </div>
+                    <div class="card" id="pf-fx-card">
+                        <div class="card-head">
+                            <h3>Price or currency?</h3>
+                            <span class="muted small"><span class="term" tabindex="0" data-tip="For a holding priced in another currency, the P&L splits exactly into the share price's move in its own currency and the move of that currency against yours since you bought (each purchase at its day's ECB rate).">Your P&amp;L split</span> into the share price's move and the currency's move</span>
+                        </div>
+                        <div class="table-wrap"><table class="table compact stack" id="pf-fx-table"></table></div>
+                    </div>
+                    <p class="hint" id="pf-movers-hint"></p>
+                </div>
+
+                <!-- Cycle and news -->
+                <div class="pf-pane" data-pane="cycle" hidden>
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-head"><h3>Market backdrop</h3><span class="muted small" id="pf-macro-asof"></span></div>
+                            <div class="stat-row" id="pf-macro"></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-head">
+                                <h3>Your mix through the cycle</h3>
+                                <span class="muted small"><span class="term" tabindex="0" data-tip="Sectors grouped by how much their profits depend on the economy (Morningstar's super sectors). Cyclical: materials, consumer cyclical, financials, real estate. Sensitive: communication, energy, industrials, technology. Defensive: consumer defensive, healthcare, utilities. Funds are looked through.">Cyclical, sensitive, defensive</span> against the benchmark</span>
+                            </div>
+                            <div class="legend" id="pf-cycle-legend"></div>
+                            <div class="hbars" id="pf-cycle-bars"></div>
+                            <div class="notes" id="pf-cycle-notes"></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>News and rating changes</h3><span class="muted small">Headline tone, the owner score against 30 and 90 days ago, and upcoming earnings</span></div>
+                        <div class="warning" id="pf-news-fix" hidden><strong>No headlines</strong>No headlines in the last 14 days from Yahoo Finance. Free Alpha Vantage or Finnhub keys add more sources. <span class="info" tabindex="0" role="note" aria-label="Set ALPHAVANTAGE_API_KEY or FINNHUB_API_KEY before starting FastValue, then review again." data-tip="Set ALPHAVANTAGE_API_KEY or FINNHUB_API_KEY before starting FastValue, then review again.">i</span></div>
+                        <div class="table-wrap" id="pf-news-wrap"><table class="table compact" id="pf-news-table"></table></div>
+                        <p class="hint" id="pf-news-rest"></p>
+                        <p class="hint">News tone comes from the News Sentiment agent and never moves the owner score. <span class="info" tabindex="0" role="note" aria-label="Rating changes compare with the last analysis recorded before that date; run reviews regularly to build the history." data-tip="Rating changes compare with the last analysis recorded before that date; run reviews regularly to build the history.">i</span></p>
+                    </div>
+                </div>
+            </div>
+            <div class="card" id="pf-import" hidden>
+                <div class="toolbar-inline" id="pf-import-next" hidden>
+                    <span class="grow" id="pf-import-next-text"></span>
+                    <button class="btn btn-primary" id="pf-next-review" type="button">Review my portfolio</button>
+                    <button class="btn btn-ghost" id="pf-next-record" type="button">See my track record</button>
+                </div>
+                <div class="card-head">
+                    <h3 id="pf-import-title">Broker import</h3>
+                    <span class="muted small" id="pf-import-caption"></span>
+                </div>
+                <details class="drawer" id="pf-import-body" open>
+                    <summary id="pf-import-body-summary">Import checks</summary>
+                    <div class="drawer-body">
+                        <div class="stat-row" id="pf-import-stats"></div>
+                        <div class="check-list" id="pf-import-checks"></div>
+                        <div class="notes" id="pf-import-notes"></div>
+                        <div id="pf-import-attention"></div>
+                    </div>
+                </details>
+                <details class="drawer">
+                    <summary>Price source of every holding</summary>
+                    <div class="drawer-body">
+                        <div class="table-wrap"><table class="table compact stack" id="pf-import-sources"></table></div>
+                        <p class="hint">Each ISIN is matched to a Yahoo listing. Type another ticker to override a match. <span class="info" tabindex="0" role="note" aria-label="Fit is the median gap between your execution price and that day's trading range on the listing, converted to EUR. Prices stay in the listing's own currency; values here are in EUR." data-tip="Fit is the median gap between your execution price and that day's trading range on the listing, converted to EUR. Prices stay in the listing's own currency; values here are in EUR.">i</span></p>
+                    </div>
+                </details>
+                <div class="toolbar-inline">
+                    <span class="hint grow">Read on this machine; names, IBANs, transfer texts and card merchants are dropped as the file is read.</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===================== WEIGHTS ===================== -->
+        <section class="view" id="view-weights" role="tabpanel" aria-labelledby="tab-weights" hidden>
+            <p class="hint">Ten agents read every company; each scores one side of it, such as valuation, shareholders or momentum. The ones set to Decides make the owner score, from -100 to +100. Timing agents only say when to buy. Nothing changes until you save.</p>
+            <div class="grid-weights">
+                <div class="side-stack">
+                    <div class="card">
+                        <div class="card-head">
+                            <h3>Owner score weights <span class="info" tabindex="0" role="note" aria-label="With the default roles: valuation and returns on capital (Fundamentals) against how management treats shareholders (Shareholders), with insider trades as evidence. Gives the verdict, a score from -100 to +100 on a 12-month view, whatever the market regime." data-tip="With the default roles: valuation and returns on capital (Fundamentals) against how management treats shareholders (Shareholders), with insider trades as evidence. Gives the verdict, a score from -100 to +100 on a 12-month view, whatever the market regime.">i</span></h3>
+                        </div>
+                        <p class="hint">These agents decide the score. Share is each agent's weight divided by the total: it is the agent's say in the score. Agents with low confidence count less (see the confidence floor). The tick switches an agent on or off everywhere.</p>
+                        <div class="weights-list" id="owner-weights-list"></div>
+                        <div class="card-head sub"><h4>Owner score levels</h4></div>
+                        <p class="hint">The entry and exit levels turn the owner score into actions in the portfolio review and the backtest. The strong levels only group scores in the backtest tables and raise a watchlist alert when a score crosses them.</p>
+                        <div class="threshold-grid" id="owner-threshold-grid"></div>
+                        <div class="card-head sub"><h4>Both scores</h4></div>
+                        <div class="field">
+                            <label for="confidence-floor">Confidence floor <span class="muted" id="confidence-floor-value"></span></label>
+                            <input type="range" id="confidence-floor" min="0" max="1" step="0.05">
+                            <span class="hint">How much a low-confidence agent still counts. At 40%, an agent with no confidence keeps 40% of its weight. Applies to the owner score and to entry timing.</span>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head">
+                            <h3><span class="term" tabindex="0" data-tip="Entry timing: signals from price and the market (trend, pullbacks, volume, options activity, the market regime and the VIX) that say when to buy and how much. It never changes the owner score.">Entry timing</span> weights</h3>
+                        </div>
+                        <p class="hint">No vote: they only time an entry. A second score on <em>when</em> to buy, never on <em>whether</em>. The default weights are the same in every regime, because separate profiles added nothing in the tests. <span class="info" tabindex="0" role="note" aria-label="The Macro agent detects the market regime, which picks one of these weight profiles; the weighted signals become the timing score, used for staging and sizing an entry. Set a weight to 0 to keep an agent informational." data-tip="The Macro agent detects the market regime, which picks one of these weight profiles; the weighted signals become the timing score, used for staging and sizing an entry. Set a weight to 0 to keep an agent informational.">i</span></p>
+                        <label class="check plain"><input type="checkbox" id="regime-same"> Same weights in every regime</label>
+                        <div class="segmented" id="regime-tabs" role="tablist"></div>
+                        <div class="weights-list" id="weights-list"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>Entry timing levels</h3></div>
+                        <p class="hint">The score backtest starts its entry and exit fields at the entry and exit levels here. All four levels group results in its calibration table; nothing in the analysis uses them.</p>
+                        <div class="threshold-grid" id="threshold-grid"></div>
+                    </div>
+                    <div class="card">
+                        <details class="drawer" id="roles-drawer">
+                            <summary>Roles and display order</summary>
+                            <div class="drawer-body">
+                                <p class="hint">Which agents decide, time or only inform. The order only changes how the analysis is listed. <strong>Decides</strong>: counts toward the owner score. <strong>Timing</strong>: when and how much, no vote. <strong>Informative</strong>: shown, never scored. <span class="info" tabindex="0" role="note" aria-label="An agent moved to a new layer starts at weight 0 there, so set its weight above. The analysis shows layers and agents in this order." data-tip="An agent moved to a new layer starts at weight 0 there, so set its weight above. The analysis shows layers and agents in this order.">i</span></p>
+                                <div class="layer-order" id="layer-order"></div>
+                                <div class="role-list" id="role-list"></div>
+                            </div>
+                        </details>
+                    </div>
+                </div>
+                <div class="side-stack">
+                    <div class="card preview-card" id="weights-preview">
+                        <div class="card-head"><h3>Live preview</h3></div>
+                        <div id="weights-preview-body" class="muted small">Open a company in <a href="#analyze" data-goto="analyze">Analyze</a> to see how your changes move its score.</div>
+                    </div>
+                    <div class="card actions-card">
+                        <div class="actions-status"><span class="badge" id="weights-source"></span></div>
+                        <p class="small neg" role="status" id="weights-error" hidden></p>
+                        <button class="btn btn-primary" id="weights-save" type="button">Save weights</button>
+                        <button class="btn" id="weights-discard" type="button">Discard changes</button>
+                        <button class="btn btn-ghost" id="weights-reset" type="button">Reset to defaults</button>
+                        <div class="warning" id="weights-reset-confirm" hidden>
+                            <p>Reset everything on this tab to FastValue's defaults? Roles, order, weights, levels, the safety cap and the confidence floor all go back, replacing your saved setup.</p>
+                            <div class="head-actions">
+                                <button class="btn btn-sm btn-danger" id="weights-reset-yes" type="button">Reset to defaults</button>
+                                <button class="btn btn-sm btn-ghost" id="weights-reset-no" type="button">Cancel</button>
+                            </div>
+                        </div>
+                        <p class="hint" id="weights-hint">No changes to save. Saved on this computer.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===================== BACKTEST ===================== -->
+        <section class="view" id="view-backtest" role="tabpanel" aria-labelledby="tab-backtest" hidden>
+            <div class="mode-bar">
+                <div class="segmented" id="bk-modes" role="tablist" aria-label="Backtest mode">
+                    <button class="seg active" type="button" data-mode="compare">Compare</button>
+                    <button class="seg" type="button" data-mode="search">Find the best setup</button>
+                    <button class="seg" type="button" data-mode="classic">Classic strategy</button>
+                    <button class="seg" type="button" data-mode="trend">Trend and dips</button>
+                    <button class="seg" type="button" data-mode="timing">Entry timing</button>
+                    <button class="seg" type="button" data-mode="record">My track record</button>
+                </div>
+                <p class="muted small" id="bk-mode-help"></p>
+            </div>
+
+            <form class="card" id="bk-form" autocomplete="off" novalidate>
+                <div class="card-head"><h3>What to test</h3></div>
+                <div class="sec-slot" id="bk-sec"></div>
+                <div class="form-grid">
+                    <div class="field">
+                        <label>Universe</label>
+                        <div class="segmented" id="bk-universe" role="group" aria-label="Universe">
+                            <button class="seg active" type="button" data-universe="portfolio">My portfolio</button>
+                            <button class="seg" type="button" data-universe="ticker">One ticker</button>
+                        </div>
+                    </div>
+                    <div class="field" id="bk-ticker-field" hidden><label for="bk-ticker">Ticker</label><input id="bk-ticker" class="input input-ticker" value="KO" spellcheck="false" maxlength="12"></div>
+                    <div class="field" id="bk-allocation-field">
+                        <label for="bk-allocation">Allocation</label>
+                        <select id="bk-allocation" class="input">
+                            <option value="current">Current weights</option>
+                            <option value="equal">Equal weight</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="bk-years">Period</label>
+                        <select id="bk-years" class="input">
+                            <option value="">All (since January 2011)</option>
+                            <option value="10">Last 10 years</option>
+                            <option value="5">Last 5 years</option>
+                            <option value="3">Last 3 years</option>
+                        </select>
+                    </div>
+                </div>
+                <p class="hint" id="bk-holdings"></p>
+
+                <div class="card-head sub"><h4>Trading rules</h4></div>
+                <div class="setup-line" id="bk-setup"></div>
+                <p class="hint">Buys when the owner score reaches the entry level and sells at the exit level; between the levels it keeps what it was doing. Funds, utilities and REITs are held as in buy and hold.</p>
+                <div class="form-grid">
+                    <div class="field"><label for="bk-gate">Entry gate</label><select id="bk-gate" class="input"></select></div>
+                    <div class="field">
+                        <label for="bk-start">Start</label>
+                        <select id="bk-start" class="input">
+                            <option value="invested">Invested from the start</option>
+                            <option value="cash">In cash until the score reaches the entry level</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="bk-rebalance">Rebalance to target weights</label>
+                        <select id="bk-rebalance" class="input">
+                            <option value="yearly">Yearly (April)</option>
+                            <option value="quarterly">Quarterly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="never">Never</option>
+                        </select>
+                    </div>
+                    <div class="field"><label for="bk-cost">Cost per trade (<span class="term" tabindex="0" data-tip="Basis points: 10 bps is 0.10% of each trade.">bps</span>)</label><input id="bk-cost" class="input" type="number" min="0" max="200" step="1" value="10"></div>
+                </div>
+
+                <div class="field" id="bk-compare-options">
+                    <label>Compare with</label>
+                    <div class="check-row">
+                        <label class="check disabled"><input type="checkbox" checked disabled>Buy and hold, same allocation</label><span class="info" tabindex="0" role="note" aria-label="Every other line is measured against it." data-tip="Every other line is measured against it.">i</span>
+                        <label class="check"><input type="checkbox" data-compare="rebalanced" checked>Allocation rebalanced</label>
+                        <label class="check"><input type="checkbox" data-compare="SPY" checked>S&amp;P 500 (SPY)</label>
+                        <label class="check"><input type="checkbox" data-compare="RSP" checked>Equal-weight S&amp;P 500 (RSP)</label>
+                        <label class="check"><input type="checkbox" data-compare="classic" checked>Classic strategies, each holding in its own slot</label>
+                    </div>
+                </div>
+
+                <div id="bk-grid" hidden>
+                    <div class="card-head sub"><h4>Setups to try</h4><span class="muted small" id="bk-grid-count"></span></div>
+                    <p class="hint">Every combination runs on the same stored scores and is ranked by its weaker half against buy and hold, so a setup has to win in both halves. The rule is fixed before the run, so nothing is tuned on noise.</p>
+                    <div class="grid-editor" id="bk-grid-editor"></div>
+                </div>
+
+                <div class="toolbar-inline">
+                    <button class="btn btn-primary" id="bk-run" type="submit" disabled data-init-gate>Run backtest</button>
+                    <div class="progress" id="bk-progress" hidden>
+                        <div class="progress-track"><span class="progress-fill" id="bk-progress-fill"></span></div>
+                        <span class="muted small" id="bk-progress-text"></span>
+                        <button class="btn btn-sm btn-ghost" type="button" data-job-cancel="bk">Stop</button>
+                    </div>
+                    <p class="hint neg form-error" id="bk-error" role="alert" data-form-error hidden></p>
+                </div>
+            </form>
+
+            <div class="results" id="bk-results" hidden>
+                <div class="stat-row" id="bk-stats"></div>
+                <div class="notes" id="bk-notes"></div>
+                <div class="card">
+                    <div class="card-head"><h3>Results</h3><span class="muted small" id="bk-period"></span></div>
+                    <div class="table-wrap"><table class="table stack" id="bk-table"></table></div>
+                    <p class="hint">Tick a row to chart it. A strategy that wins in only one half of the period is weaker evidence.</p>
+                </div>
+                <div class="card">
+                    <div class="card-head"><h3>Growth of 100</h3><div class="legend" id="bk-legend"></div></div>
+                    <div class="chart chart-md" id="bk-chart"></div>
+                </div>
+                <div class="card" id="bk-timeline-card">
+                    <div class="card-head"><h3>Owner score against the levels, by month</h3><div class="legend" id="bk-timeline-legend"></div></div>
+                    <div class="timeline" id="bk-timeline"></div>
+                    <p class="hint" id="bk-timeline-readout">Point at a month to read it.</p>
+                    <div class="table-wrap"><table class="table compact" id="bk-holdings-table"></table></div>
+                </div>
+            </div>
+
+            <div class="results" id="bk-search-results" hidden>
+                <div class="verdict" id="bk-verdict"></div>
+                <div class="stat-row" id="bk-search-stats"></div>
+                <div class="card">
+                    <div class="card-head"><h3>Setups ranked by their weaker half</h3><span class="muted small" id="bk-search-period"></span></div>
+                    <div class="table-wrap"><table class="table stack" id="bk-search-table"></table></div>
+                    <p class="hint">S&amp;P 500 replays that setup and your saved one on about 600 companies it was not tuned on. Apply loads a setup into the Weights tab without saving it.</p>
+                    <button class="btn btn-ghost" id="bk-search-more" type="button" hidden>Show all</button>
+                    <p class="hint">Setups that traded the same are one row. "Apply" loads the scoring part into the Weights tab without saving. "S&amp;P 500" replays the row on about 600 companies it was not tuned on: run it before applying anything.</p>
+                </div>
+                <div class="card" id="bk-index" hidden>
+                    <div class="card-head"><h3>Out of sample: the S&amp;P 500</h3><span class="muted small" id="bk-index-caption"></span></div>
+                    <div class="verdict" id="bk-index-verdict"></div>
+                    <div class="table-wrap"><table class="table compact" id="bk-index-table"></table></div>
+                    <div class="notes" id="bk-index-notes"></div>
+                </div>
+                <div class="notes" id="bk-search-notes"></div>
+            </div>
+
+            <div id="bk-classic" hidden>
+            <div id="lab-single">
+                    <form class="card" id="bt-form" autocomplete="off" novalidate>
+                        <div class="form-grid">
+                            <div class="field"><label for="bt-ticker">Ticker</label><input id="bt-ticker" class="input input-ticker" value="SPY" spellcheck="false" maxlength="12"></div>
+                            <div class="field"><label for="bt-strategy">Strategy</label><select id="bt-strategy" class="input"></select></div>
+                        </div>
+                        <p class="muted small" id="bt-description"></p>
+                        <div class="form-grid" id="bt-params"></div>
+                        <div class="toolbar-inline">
+                            <button class="btn btn-primary" id="bt-run" type="submit" disabled data-init-gate>Run backtest</button>
+                            <p class="hint neg form-error" id="bt-error" role="alert" data-form-error hidden></p>
+                        </div>
+                    </form>
+                    <div class="results" id="bt-results" hidden>
+                        <div class="stat-row" id="bt-stats"></div>
+                        <p class="hint" id="bt-thin-hint" hidden>Price only, one ticker, in sample. Compare tests both halves of the period.</p>
+                        <div class="card"><div class="card-head"><h3 id="bt-chart-title">Price</h3><div class="legend" id="bt-legend"></div></div><div class="chart" id="bt-price-chart"></div></div>
+                        <div class="card" id="bt-subplot-card" hidden><div class="card-head"><h3 id="bt-subplot-title">Indicator</h3></div><div class="chart chart-sm" id="bt-subplot-chart"></div></div>
+                        <div class="card"><div class="card-head"><h3>Equity: strategy vs buy and hold</h3><div class="legend" id="bt-equity-legend"></div></div><div class="chart chart-sm" id="bt-equity-chart"></div></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="bk-record" hidden>
+                <form class="card" id="rec-form" autocomplete="off">
+                    <div class="card-head"><h3>Your account, replayed day by day</h3><span class="muted small" id="rec-caption"></span></div>
+                    <p class="hint">Your imported export, valued day by day in EUR. Every comparison keeps your deposits and withdrawals on their days. Nothing here changes FastValue's scoring.</p>
+                    <div class="warning" id="rec-empty" hidden><strong>No import yet</strong>Import your broker's export in the Portfolio tab first (Trade Republic natively, any other broker through the CSV template). <button class="btn btn-sm" type="button" data-goto="portfolio">Open the Portfolio tab</button></div>
+                    <div class="form-grid">
+                        <div class="field">
+                            <label for="rec-method">Realised P&amp;L by</label>
+                            <select id="rec-method" class="input">
+                                <option value="fifo">FIFO (the broker's records and German tax)</option>
+                                <option value="average">Average cost</option>
+                            </select>
+                        </div>
+                        <div class="field wide">
+                            <label>FastValue's view of your trades</label>
+                            <label class="check plain"><input type="checkbox" id="rec-fastvalue">Rate each stock buy with the owner score of that month, and test its exit rule (US companies with SEC filings; takes a few minutes the first time)</label>
+                        </div>
+                    </div>
+                    <div class="sec-slot" id="rec-sec" hidden></div>
+                    <div class="toolbar-inline">
+                        <button class="btn btn-primary" id="rec-run" type="submit" disabled data-init-gate>Replay my account</button>
+                        <div class="progress" id="rec-progress" hidden>
+                            <div class="progress-track"><span class="progress-fill" id="rec-progress-fill"></span></div>
+                            <span class="muted small" id="rec-progress-text"></span>
+                            <button class="btn btn-sm btn-ghost" type="button" data-job-cancel="rec">Stop</button>
+                        </div>
+                    </div>
+                </form>
+                <div class="results" id="rec-results" hidden>
+                    <div class="stat-row" id="rec-stats"></div>
+                    <div class="card pf-dash-head">
+                        <div class="segmented" id="rec-sections" role="tablist" aria-label="Track record sections">
+                            <button class="seg active" type="button" role="tab" data-rec-section="overview">Overview</button>
+                            <button class="seg" type="button" role="tab" data-rec-section="cash">Cash</button>
+                            <button class="seg" type="button" role="tab" data-rec-section="style">Your style</button>
+                            <button class="seg" type="button" role="tab" data-rec-section="entries">Entries &amp; exits</button>
+                            <button class="seg" type="button" role="tab" data-rec-section="rules">Rules lab</button>
+                            <button class="seg" type="button" role="tab" data-rec-section="holdings">Holdings</button>
+                        </div>
+                        <span class="spacer"></span>
+                        <button class="btn btn-sm" id="rec-share" type="button" aria-describedby="rec-share-hint">Share without amounts</button>
+                        <label class="check small"><input type="checkbox" id="rec-share-names">Show company and fund names</label>
+                        <a class="btn btn-sm btn-primary" id="rec-share-download" href="/report/my-style?download=1" download hidden>Download the page</a>
+                        <p class="hint rec-share-hint" id="rec-share-hint">Makes a page with shares, counts and returns only, no amounts. It stays on this computer until you share it.</p>
+                    </div>
+
+                    <div class="rec-pane" data-pane="overview">
+                        <div class="card">
+                            <div class="card-head">
+                                <h3>Invested part against the indices <span class="info" tabindex="0" role="note" aria-label="MSCI World, S&amp;P 500 and Nasdaq 100 as a European investor can buy them: the accumulating iShares UCITS funds IWDA, CSPX and CNDX (London, in dollars), converted to EUR at the ECB rate of each day. They reinvest dividends after US withholding tax. SPY and QQQ follow the same S&amp;P 500 and Nasdaq 100 but are US funds that EU brokers do not sell to private investors, and their price alone leaves out the dividends." data-tip="MSCI World, S&amp;P 500 and Nasdaq 100 as a European investor can buy them: the accumulating iShares UCITS funds IWDA, CSPX and CNDX (London, in dollars), converted to EUR at the ECB rate of each day. They reinvest dividends after US withholding tax. SPY and QQQ follow the same S&amp;P 500 and Nasdaq 100 but are US funds that EU brokers do not sell to private investors, and their price alone leaves out the dividends.">i</span></h3>
+                                <div class="segmented seg-sm" id="rec-chart-mode" role="group" data-seg="toggle" aria-label="Measure"></div>
+                            </div>
+                            <div class="legend" id="rec-legend"></div>
+                            <div class="chart chart-md" id="rec-chart"></div>
+                            <p class="hint" id="rec-chart-hint"></p>
+                        </div>
+                        <div class="card">
+                            <div class="card-head">
+                                <h3>Learnings</h3>
+                                <span class="muted small">Robust patterns first, then <span class="term" tabindex="0" data-tip="exact: accounting from your export. high: at least 30 cases, |t| of 2 or more (orders in one name and month count once) and the same sign in both halves of the period. medium: |t| of 1.5 or more and both halves agree. low: could be chance; the lesson then says to keep what you do.">accounting facts and weaker findings</span>. Select one for what to do and its evidence.</span>
+                            </div>
+                            <div class="learning-list" id="rec-learnings"></div>
+                            <button class="btn btn-ghost" id="rec-learnings-more" type="button" hidden>Show all</button>
+                        </div>
+                        <div class="card">
+                            <div class="card-head"><h3>What if</h3><span class="muted small">Your account under other choices, on the same days</span></div>
+                            <div class="table-wrap"><table class="table alt-table" id="rec-alternatives"></table></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-head"><h3>By year</h3><span class="muted small">Time-weighted: your invested part, cash left out, against each index.</span></div>
+                            <div class="table-wrap"><table class="table stack" id="rec-years"></table></div>
+                        </div>
+                        <div class="notes" id="rec-notes"></div>
+                    </div>
+
+                    <div class="rec-pane" data-pane="cash" hidden>
+                        <div class="stat-row" id="rec-cash-stats"></div>
+                        <div class="card">
+                            <div class="card-head"><h3>Whole account against every deposit in the index <span class="info" tabindex="0" role="note" aria-label="Every deposit into the index: each euro you put in buys the index on its day and each withdrawal sells it, so nothing sits in cash. The gap to your account splits exactly into what your invested choices did against the index and what holding cash did. MSCI World, S&amp;P 500 and Nasdaq 100 as a European investor can buy them: the accumulating iShares UCITS funds IWDA, CSPX and CNDX (London, in dollars), converted to EUR at the ECB rate of each day. They reinvest dividends after US withholding tax. SPY and QQQ follow the same S&amp;P 500 and Nasdaq 100 but are US funds that EU brokers do not sell to private investors, and their price alone leaves out the dividends." data-tip="Every deposit into the index: each euro you put in buys the index on its day and each withdrawal sells it, so nothing sits in cash. The gap to your account splits exactly into what your invested choices did against the index and what holding cash did. MSCI World, S&amp;P 500 and Nasdaq 100 as a European investor can buy them: the accumulating iShares UCITS funds IWDA, CSPX and CNDX (London, in dollars), converted to EUR at the ECB rate of each day. They reinvest dividends after US withholding tax. SPY and QQQ follow the same S&amp;P 500 and Nasdaq 100 but are US funds that EU brokers do not sell to private investors, and their price alone leaves out the dividends.">i</span></h3></div>
+                            <div class="legend" id="rec-cash-legend"></div>
+                            <div class="chart chart-md" id="rec-cash-chart"></div>
+                            <p class="hint">Your account (cash plus holdings, EUR), the money you put in net of withdrawals and card spending, and the same deposits and withdrawals put into each index on the same days. Select a name to hide or show its line.</p>
+                        </div>
+                        <div class="card">
+                            <div class="card-head"><h3>Cash share of the account</h3><span class="muted small" id="rec-cash-share-caption"></span></div>
+                            <div class="chart chart-sm" id="rec-cash-share-chart"></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-head"><h3>What if the cash had been invested</h3><span class="muted small">Same deposits and withdrawals on the same days</span></div>
+                            <div class="table-wrap"><table class="table alt-table" id="rec-cash-alternatives"></table></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-head"><h3>By year</h3><span class="muted small">Whole account: cash included. Cash effect: whole account minus invested part. Modified Dietz: what the money earned that year.</span></div>
+                            <div class="table-wrap"><table class="table" id="rec-cash-years"></table></div>
+                        </div>
+                        <div class="card" id="rec-cash-learning-card">
+                            <div class="card-head"><h3>What cash did</h3><span class="muted small">Select it for what to do and its evidence.</span></div>
+                            <div class="learning-list" id="rec-cash-learning"></div>
+                        </div>
+                    </div>
+
+                    <div class="rec-pane" data-pane="style" hidden>
+                        <div class="stat-row" id="rec-style-stats"></div>
+                        <div class="grid-2">
+                            <div class="card">
+                                <div class="card-head"><h3>Where the P&amp;L came from</h3><span class="muted small" id="rec-pareto-caption"></span></div>
+                                <div class="dbars" id="rec-pareto"></div>
+                                <p class="hint">The largest round trips by total P&amp;L (dividends and fees included, open positions at today's value), as a share of the total.</p>
+                            </div>
+                            <div class="card">
+                                <div class="card-head"><h3>Holding periods</h3><span class="muted small">Round trips by how long they lasted</span></div>
+                                <div class="hbars wide" id="rec-holding"></div>
+                                <p class="hint">Closed trips run from the first buy to zero shares; open positions count up to today.</p>
+                            </div>
+                        </div>
+                        <div class="grid-2">
+                            <div class="card">
+                                <div class="card-head"><h3>Core, satellite, metals, speculative</h3><span class="muted small">Share of today's invested value</span></div>
+                                <div class="hbars wide" id="rec-buckets"></div>
+                                <p class="hint">Core: broad index, bond and money-market funds. Metals: physical metal ETCs. Speculative: knock-out products. Satellite: single stocks and thematic funds.</p>
+                            </div>
+                            <div class="card">
+                                <div class="card-head"><h3>How positions were built</h3><span class="muted small">Buys per round trip, and the five largest results</span></div>
+                                <div class="hbars wide" id="rec-building"></div>
+                                <div class="table-wrap"><table class="table compact" id="rec-top5"></table></div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-head"><h3>Lessons</h3><span class="muted small">The number first, then what it suggests; the badge says how sure</span></div>
+                            <div class="learning-list" id="rec-lessons"></div>
+                        </div>
+                    </div>
+
+                    <div class="rec-pane" data-pane="entries" hidden>
+                        <div class="card">
+                            <div class="card-head"><h3>What made an entry good <span class="info" tabindex="0" role="note" aria-label="Each order is compared with MSCI World only, the primary benchmark, so these tables keep one column per measure. The S&amp;P 500 and the Nasdaq 100 are in Overview." data-tip="Each order is compared with MSCI World only, the primary benchmark, so these tables keep one column per measure. The S&amp;P 500 and the Nasdaq 100 are in Overview.">i</span></h3><span class="muted small" id="rec-entries-caption"></span></div>
+                            <div class="table-wrap"><table class="table" id="rec-entry-tags"></table></div>
+                            <p class="hint" id="rec-entries-protocol"></p>
+                        </div>
+                        <div class="card" id="rec-wr-card">
+                            <div class="card-head"><h3>Your history against the weights <span class="info" tabindex="0" role="note" aria-label="Each agent is a scoring module in the Weights tab. The owner score (fundamentals and shareholder) decides, against the entry and exit levels. The timing agents (momentum, volume, pullback, options, macro) only inform entry timing and size and have no vote. A weight is the agent's share of its layer: the owner agents split the owner score, and each market regime has its own timing profile. This card asks whether the conditions that made your own entries good are the ones the agents reward. In line means the buys in the buckets an agent rewards did better than the buys in the buckets it penalises. Your history disagrees means the opposite. It is clear only at medium or high confidence; one investor's history is a hypothesis, never a test of the framework. Nothing here changes a weight." data-tip="Each agent is a scoring module in the Weights tab. The owner score (fundamentals and shareholder) decides, against the entry and exit levels. The timing agents (momentum, volume, pullback, options, macro) only inform entry timing and size and have no vote. A weight is the agent's share of its layer: the owner agents split the owner score, and each market regime has its own timing profile. This card asks whether the conditions that made your own entries good are the ones the agents reward. In line means the buys in the buckets an agent rewards did better than the buys in the buckets it penalises. Your history disagrees means the opposite. It is clear only at medium or high confidence; one investor's history is a hypothesis, never a test of the framework. Nothing here changes a weight.">i</span></h3><span class="muted small" id="rec-wr-caption"></span></div>
+                            <div class="table-wrap"><table class="table" id="rec-wr-agents"></table></div>
+                            <p class="hint" id="rec-wr-summary"></p>
+                            <div class="card-head sub"><h4>Tags no agent reads <span class="info" tabindex="0" role="note" aria-label="These conditions describe how you buy (the name's volatility, order size, how long a position was building, how many positions you held, the market's drawdown), not something an agent scores. They stay here so you can see what your history says about them." data-tip="These conditions describe how you buy (the name's volatility, order size, how long a position was building, how many positions you held, the market's drawdown), not something an agent scores. They stay here so you can see what your history says about them.">i</span></h4></div>
+                            <div class="table-wrap"><table class="table compact" id="rec-wr-unread"></table></div>
+                            <p class="hint" id="rec-wr-protocol"></p>
+                        </div>
+                        <div class="card" id="rec-reg-card">
+                            <div class="card-head"><h3>By market regime <span class="info" tabindex="0" role="note" aria-label="The market regime is how the app's macro classifier reads the market the trading day before each buy: BULL (rising and calm), CORRECTION, BEAR or CRISIS. It combines the S&amp;P 500's trend, the VIX, the yield curve, breadth and credit spreads, and it also picks which timing weight profile applies. Results are the return against MSCI World 90 days after each buy. Open a row to see which conditions did best and worst inside that regime, where there are enough buys." data-tip="The market regime is how the app's macro classifier reads the market the trading day before each buy: BULL (rising and calm), CORRECTION, BEAR or CRISIS. It combines the S&amp;P 500's trend, the VIX, the yield curve, breadth and credit spreads, and it also picks which timing weight profile applies. Results are the return against MSCI World 90 days after each buy. Open a row to see which conditions did best and worst inside that regime, where there are enough buys.">i</span></h3><span class="muted small" id="rec-reg-caption"></span></div>
+                            <div class="table-wrap"><table class="table" id="rec-reg-table"></table></div>
+                        </div>
+                        <div class="card" id="rec-now-card">
+                            <div class="card-head"><h3>What this suggests now <span class="info" tabindex="0" role="note" aria-label="Each line is about how to act within the current rules: stage the buy, wait for a pullback, size, which tag to watch. The label says where the evidence comes from: your history and the S&amp;P 500 panel agree (strongest), the panel only, or your history only (a hypothesis to test forward). They never change a weight. If your history argues for one, the line names the replay that would test it." data-tip="Each line is about how to act within the current rules: stage the buy, wait for a pullback, size, which tag to watch. The label says where the evidence comes from: your history and the S&amp;P 500 panel agree (strongest), the panel only, or your history only (a hypothesis to test forward). They never change a weight. If your history argues for one, the line names the replay that would test it.">i</span></h3><span class="muted small" id="rec-now-caption"></span></div>
+                            <div class="learning-list" id="rec-now-list"></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-head"><h3>Round trips, cut by</h3><div class="segmented seg-sm" id="rec-cut-dims" role="group" data-seg="toggle" aria-label="Cut by"></div></div>
+                            <div class="table-wrap"><table class="table compact" id="rec-cuts"></table></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-head"><h3>Exits <span class="info" tabindex="0" role="note" aria-label="Each order is compared with MSCI World only, the primary benchmark, so these tables keep one column per measure. The S&amp;P 500 and the Nasdaq 100 are in Overview." data-tip="Each order is compared with MSCI World only, the primary benchmark, so these tables keep one column per measure. The S&amp;P 500 and the Nasdaq 100 are in Overview.">i</span></h3><span class="muted small" id="rec-exits-caption"></span></div>
+                            <div class="stat-row" id="rec-exit-stats"></div>
+                            <div class="table-wrap"><table class="table" id="rec-exit-tags"></table></div>
+                        </div>
+                    </div>
+
+                    <div class="rec-pane" data-pane="rules" hidden>
+                        <div class="card">
+                            <div class="card-head"><h3>Rules replayed on your whole history</h3><span class="muted small" id="rec-rules-caption"></span></div>
+                            <div class="warning note" id="rec-rules-verdict"></div>
+                            <div class="table-wrap"><table class="table" id="rec-rules-table"></table></div>
+                            <p class="hint" id="rec-rules-protocol"></p>
+                        </div>
+                        <div class="card">
+                            <div class="card-head"><h3>Account value under each rule</h3><div class="legend" id="rec-rules-legend"></div></div>
+                            <div class="chart chart-md" id="rec-rules-chart"></div>
+                            <p class="hint">Tick up to six rules in the table to draw them. Every line has the same deposits and withdrawals on the same days.</p>
+                        </div>
+                        <form class="card" id="rec-rule-form" autocomplete="off" novalidate>
+                            <div class="card-head"><h3>Try your own rule</h3><span class="muted small">Leave a field empty to switch that part off. The result joins the table above.</span></div>
+                            <div class="form-grid">
+                                <div class="field"><label for="rr-label">Name</label><input id="rr-label" class="input" maxlength="60" placeholder="My rule"></div>
+                                <div class="field"><label for="rr-min-hold">Hold at least (days)</label><input id="rr-min-hold" class="input" type="number" min="1" max="3650" step="1" placeholder="off"></div>
+                                <div class="field"><label for="rr-low-vol-hold">Steady names at least (days)</label><input id="rr-low-vol-hold" class="input" type="number" min="1" max="3650" step="1" placeholder="off"></div>
+                                <div class="field"><label for="rr-max-weight">Cap per name (% of account)</label><input id="rr-max-weight" class="input" type="number" min="1" max="100" step="1" placeholder="off"></div>
+                                <div class="field"><label for="rr-min-buy">Skip one-off buys under (EUR)</label><input id="rr-min-buy" class="input" type="number" min="1" step="10" placeholder="off"></div>
+                                <div class="field"><label for="rr-cash-reserve">Cash reserve (%), the rest into MSCI World</label><input id="rr-cash-reserve" class="input" type="number" min="0" max="100" step="1" placeholder="off"></div>
+                                <div class="field"><label for="rr-stop">Stop-loss (%)</label><input id="rr-stop" class="input" type="number" min="2" max="90" step="1" placeholder="off"></div>
+                                <div class="field"><label for="rr-take">Take profit (%)</label><input id="rr-take" class="input" type="number" min="5" max="500" step="5" placeholder="off"></div>
+                            </div>
+                            <div class="check-row">
+                                <label class="check"><input type="checkbox" id="rr-no-turbos">No turbos</label>
+                                <label class="check"><input type="checkbox" id="rr-plans-only">Savings plans only</label>
+                                <label class="check"><input type="checkbox" id="rr-trim" checked>Trim above the cap at month-end</label>
+                            </div>
+                            <div class="toolbar-inline">
+                                <button class="btn btn-primary" id="rr-run" type="submit">Replay with this rule</button>
+                                <div class="progress" id="rr-progress" hidden>
+                                    <div class="progress-track"><span class="progress-fill" id="rr-progress-fill"></span></div>
+                                    <span class="muted small" id="rr-progress-text"></span>
+                                    <button class="btn btn-sm btn-ghost" type="button" data-job-cancel="rr">Stop</button>
+                                </div>
+                                <p class="hint neg form-error" id="rr-error" role="alert" data-form-error hidden></p>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="rec-pane" data-pane="holdings" hidden>
+                        <div class="card">
+                            <div class="card-head"><h3>Holdings, best to worst</h3><span class="muted small" id="rec-holdings-caption"></span></div>
+                            <div class="table-wrap"><table class="table compact" id="rec-holdings"></table></div>
+                            <button class="btn btn-ghost" id="rec-holdings-more" type="button" hidden>Show all</button>
+                        </div>
+                        <div class="card">
+                            <div class="card-head"><h3>Round trips</h3><span class="muted small" id="rec-trips-caption"></span></div>
+                            <div class="table-wrap table-scroll"><table class="table compact" id="rec-trips"></table></div>
+                        </div>
+                    </div>
+
+                    <p class="hint"><a href="/report/track-record" target="_blank" rel="noopener">Open the full report</a>: every round trip and order, with the price 30, 90 and 180 days later, the worst and best point while held, and where each buy sat in its 52-week range. It stays on this computer.</p>
+                </div>
+            </div>
+
+            <div id="bk-trend" hidden>
+                <div class="card" id="tr-now">
+                    <div class="card-head"><h3>Today on the watched markets <span class="info" tabindex="0" role="note" aria-label="The rules the daily check watches, read at the latest close. Two engines: out when the close is below its 200-day average, the last 20 days&#39; volatility is above 30% or the VIX is above the 3-month VIX; back in 2% above the average. PB EMA channel: out below both 200-period EMAs (of the highs and of the closes), back in above both. When the two-engine rule flips, the daily check raises an alert; the 200-day rule is shown for comparison. They inform; no score changes." data-tip="The rules the daily check watches, read at the latest close. Two engines: out when the close is below its 200-day average, the last 20 days&#39; volatility is above 30% or the VIX is above the 3-month VIX; back in 2% above the average. PB EMA channel: out below both 200-period EMAs (of the highs and of the closes), back in above both. When the two-engine rule flips, the daily check raises an alert; the 200-day rule is shown for comparison. They inform; no score changes.">i</span></h3><button class="btn btn-ghost" id="tr-now-refresh" type="button">Refresh</button></div>
+                    <div class="table-wrap"><table class="table compact stack" id="tr-now-table"></table></div>
+                    <p class="hint" id="tr-now-caption"></p>
+                </div>
+
+                <form class="card" id="tr-form" autocomplete="off" novalidate>
+                    <div class="card-head"><h3>What to test <span class="info" tabindex="0" role="note" aria-label="A rule reads the close and trades at the next close; every change of position pays the cost; cash earns 3-month T-bills. A synthetic 2x or 3x fund is rebalanced daily like a real one: the multiple of the daily return, less the borrowing (T-bills plus a spread) and a yearly fee. A real fund, such as TQQQ, replaces it from its first day." data-tip="A rule reads the close and trades at the next close; every change of position pays the cost; cash earns 3-month T-bills. A synthetic 2x or 3x fund is rebalanced daily like a real one: the multiple of the daily return, less the borrowing (T-bills plus a spread) and a yearly fee. A real fund, such as TQQQ, replaces it from its first day.">i</span></h3>
+                        <div class="segmented seg-sm" id="tr-studies" role="tablist" aria-label="Study">
+                            <button class="seg active" type="button" role="tab" data-study="rule">A trend or dip rule</button>
+                            <button class="seg" type="button" role="tab" data-study="savings">Saving into dips</button>
+                            <button class="seg" type="button" role="tab" data-study="rotation">Momentum rotation</button>
+                        </div>
+                    </div>
+                    <p class="hint" id="tr-study-help"></p>
+                    <div class="form-grid">
+                        <div class="field" data-tr-for="rule savings"><label for="tr-signal">Market</label><input id="tr-signal" class="input input-ticker" value="QQQ" spellcheck="false" maxlength="12"></div>
+                        <div class="field" data-tr-for="rule savings">
+                            <label for="tr-leverage">Hold</label>
+                            <select id="tr-leverage" class="input">
+                                <option value="1">The market itself</option>
+                                <option value="2">2x, rebalanced daily</option>
+                                <option value="3">3x, rebalanced daily</option>
+                            </select>
+                        </div>
+                        <div class="field" data-tr-for="rule savings"><label for="tr-vehicle">Real fund from its first day</label><input id="tr-vehicle" class="input input-ticker" placeholder="optional, e.g. TQQQ" spellcheck="false" maxlength="12"></div>
+                        <div class="field" data-tr-for="rule savings">
+                            <label for="tr-extend">History</label>
+                            <select id="tr-extend" class="input">
+                                <option value="">The fund&#39;s own</option>
+                                <option value="1">Extended with its index</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="tr-start">From</label>
+                            <select id="tr-start" class="input">
+                                <option value="">As early as the data allows</option>
+                                <option value="vehicle" data-tr-for="rule">The real fund&#39;s first day</option>
+                                <option value="2000-01-01">2000</option>
+                                <option value="2010-01-01">2010</option>
+                                <option value="2016-01-01">2016</option>
+                            </select>
+                        </div>
+                    </div>
+                    <p class="hint" id="tr-market-hint"></p>
+
+                    <div data-tr-for="rule">
+                        <div class="form-grid">
+                            <div class="field"><label for="tr-rule">Rule</label><select id="tr-rule" class="input"></select></div>
+                            <div class="field"><label for="tr-execution">Trade</label><select id="tr-execution" class="input"></select></div>
+                            <div class="field"><label for="tr-cost">Cost per trade (<span class="term" tabindex="0" data-tip="Basis points: 10 bps is 0.10% of each trade.">bps</span>)</label><input id="tr-cost" class="input" type="number" min="0" max="200" step="1" value="10"></div>
+                        </div>
+                        <p class="hint" id="tr-rule-help"></p>
+                        <div class="form-grid" id="tr-params"></div>
+                    </div>
+
+                    <div data-tr-for="savings">
+                        <div class="card-head sub"><h4>Wait for a fall from the high of</h4></div>
+                        <div class="check-row" id="tr-thresholds"></div>
+                        <p class="hint">The same saving every month. Invested at once, or kept in T-bills until the market closes that far below its highest close so far, then all of it is invested at the next close.</p>
+                    </div>
+
+                    <div data-tr-for="rotation">
+                        <div class="form-grid">
+                            <div class="field"><label for="tr-universe">Funds</label><select id="tr-universe" class="input"></select></div>
+                            <div class="field"><label for="tr-top">Hold the top</label><input id="tr-top" class="input" type="number" min="1" max="10" step="1" value="3"></div>
+                            <div class="field">
+                                <label for="tr-review">Review</label>
+                                <select id="tr-review" class="input">
+                                    <option value="quarterly">Quarterly, as MSCI (Feb, May, Aug, Nov)</option>
+                                    <option value="monthly">Monthly</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label for="tr-weighting">Weights</label>
+                                <select id="tr-weighting" class="input">
+                                    <option value="score">By momentum score, as MSCI</option>
+                                    <option value="equal">Equal</option>
+                                </select>
+                            </div>
+                            <div class="field"><label for="tr-rot-cost">Cost per trade (<span class="term" tabindex="0" data-tip="Basis points: 10 bps is 0.10% of each trade.">bps</span>)</label><input id="tr-rot-cost" class="input" type="number" min="0" max="200" step="1" value="10"></div>
+                        </div>
+                        <div class="check-row">
+                            <label class="check"><input type="checkbox" id="tr-buffer" checked>Move halfway to new weights (MSCI&#39;s buffer)</label>
+                            <label class="check"><input type="checkbox" id="tr-adhoc" checked>Extra review when volatility jumps</label>
+                            <label class="check"><input type="checkbox" id="tr-trend-filter">Cash while SPY is below its 200-day average</label>
+                        </div>
+                    </div>
+
+                    <div class="toolbar-inline">
+                        <button class="btn btn-primary" id="tr-run" type="submit" disabled data-init-gate>Run backtest</button>
+                        <div class="progress" id="tr-progress" hidden>
+                            <div class="progress-track"><span class="progress-fill" id="tr-progress-fill"></span></div>
+                            <span class="muted small" id="tr-progress-text"></span>
+                            <button class="btn btn-sm btn-ghost" type="button" data-job-cancel="tr">Stop</button>
+                        </div>
+                        <p class="hint neg form-error" id="tr-error" role="alert" data-form-error hidden></p>
+                    </div>
+                </form>
+
+                <div class="results" id="tr-results" hidden>
+                    <div class="verdict" id="tr-verdict"></div>
+                    <div class="stat-row" id="tr-stats"></div>
+                    <div class="card">
+                        <div class="card-head"><h3>Results</h3><span class="muted small" id="tr-period"></span></div>
+                        <div class="table-wrap"><table class="table" id="tr-table"></table></div>
+                        <p class="hint">The halves split the same run in two. A rule that wins in only one half is weaker evidence.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>Growth of 100</h3><div class="legend" id="tr-equity-legend"></div></div>
+                        <div class="chart chart-md" id="tr-equity-chart"></div>
+                        <p class="hint">Log scale, so a fall of half looks the same in any decade.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>Fall from the previous high</h3><div class="legend" id="tr-dd-legend"></div></div>
+                        <div class="chart chart-sm" id="tr-dd-chart"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3 id="tr-price-title">The market and the rule</h3><div class="legend" id="tr-price-legend"></div></div>
+                        <div class="chart chart-md" id="tr-price-chart"></div>
+                        <p class="hint">The band under the price marks the weeks the rule was invested.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>Does it hold up? <span class="info" tabindex="0" role="note" aria-label="Nearby settings: the rule with each setting around the default, over the same period; a rule that only works at one setting is likely fitted to the past. Walk-forward: each year the setting with the best Sharpe over the previous five years, then held for that year, so nothing is chosen with hindsight. Reshuffled history: the same days drawn in a different order, in blocks of about a month, a thousand times; it shows how much of the result was the order things happened in." data-tip="Nearby settings: the rule with each setting around the default, over the same period; a rule that only works at one setting is likely fitted to the past. Walk-forward: each year the setting with the best Sharpe over the previous five years, then held for that year, so nothing is chosen with hindsight. Reshuffled history: the same days drawn in a different order, in blocks of about a month, a thousand times; it shows how much of the result was the order things happened in.">i</span></h3></div>
+                        <div class="card-head sub"><h4>Nearby settings</h4><span class="muted small" id="tr-sweep-caption"></span></div>
+                        <div class="table-wrap table-scroll"><table class="table compact" id="tr-sweep"></table></div>
+                        <p class="hint" id="tr-sweep-hint"></p>
+                        <div class="card-head sub"><h4>Walk-forward</h4><span class="muted small" id="tr-wf-caption"></span></div>
+                        <div class="table-wrap"><table class="table compact" id="tr-wf"></table></div>
+                        <div class="card-head sub"><h4>Reshuffled history</h4><span class="muted small" id="tr-boot-caption"></span></div>
+                        <div class="table-wrap"><table class="table compact" id="tr-boot"></table></div>
+                        <p class="hint" id="tr-tracking"></p>
+                    </div>
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-head"><h3>Year by year</h3></div>
+                            <div class="table-wrap table-scroll"><table class="table compact" id="tr-years"></table></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-head"><h3>Trades</h3><span class="muted small" id="tr-trades-caption"></span></div>
+                            <div class="table-wrap table-scroll"><table class="table compact" id="tr-trades"></table></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>Month by month</h3><span class="muted small">The rule&#39;s return each month</span></div>
+                        <div class="table-wrap"><table class="table compact" id="tr-months"></table></div>
+                    </div>
+                    <div class="notes" id="tr-notes"></div>
+                </div>
+
+                <div class="results" id="tr-savings-results" hidden>
+                    <div class="verdict" id="tr-sv-verdict"></div>
+                    <div class="card">
+                        <div class="card-head"><h3>The same saving each month</h3><span class="muted small" id="tr-sv-period"></span></div>
+                        <div class="table-wrap"><table class="table" id="tr-sv-table"></table></div>
+                        <p class="hint">Yearly return on the money put in (money-weighted). Each half starts its own savings on the half&#39;s first day.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>Every window</h3><span class="muted small" id="tr-sv-rolling-caption"></span></div>
+                        <div class="table-wrap"><table class="table" id="tr-sv-rolling"></table></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>Fall from the high</h3><div class="legend" id="tr-sv-legend"></div></div>
+                        <div class="chart chart-sm" id="tr-sv-chart"></div>
+                    </div>
+                    <div class="notes" id="tr-sv-notes"></div>
+                </div>
+
+                <div class="results" id="tr-rotation-results" hidden>
+                    <div class="verdict" id="tr-rot-verdict"></div>
+                    <div class="card">
+                        <div class="card-head"><h3>Results</h3><span class="muted small" id="tr-rot-period"></span></div>
+                        <div class="table-wrap"><table class="table" id="tr-rot-table"></table></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>Growth of 100</h3><div class="legend" id="tr-rot-legend"></div></div>
+                        <div class="chart chart-md" id="tr-rot-chart"></div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-head"><h3>If the review were today</h3><span class="muted small" id="tr-rot-latest-caption"></span></div>
+                            <div class="table-wrap"><table class="table compact" id="tr-rot-latest"></table></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-head"><h3>Other settings</h3></div>
+                            <div class="table-wrap"><table class="table compact" id="tr-rot-sweep"></table></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>Latest reviews</h3></div>
+                        <div class="table-wrap table-scroll"><table class="table compact" id="tr-rot-reviews"></table></div>
+                    </div>
+                    <div class="notes" id="tr-rot-notes"></div>
+                </div>
+            </div>
+
+                        <div id="bk-timing" hidden>
+            <form class="card" id="sbt-form" autocomplete="off" novalidate>
+                    <div class="card-head">
+                        <h3>Entry timing replayed <span class="info" tabindex="0" role="note" aria-label="Replays the timing agents that have point-in-time history. It buys when their score reaches the entry value and sells at the exit value, on the next bar. The owner score is tested in Compare." data-tip="Replays the timing agents that have point-in-time history. It buys when their score reaches the entry value and sells at the exit value, on the next bar. The owner score is tested in Compare.">i</span></h3>
+                    </div>
+                    <div class="form-grid">
+                        <div class="field"><label for="sbt-ticker">Ticker</label><input id="sbt-ticker" class="input input-ticker" value="SPY" spellcheck="false" maxlength="12"></div>
+                        <div class="field"><label for="sbt-frequency">Evaluate</label><select id="sbt-frequency" class="input"></select></div>
+                        <div class="field"><label for="sbt-entry">Enter when score at or above</label><input id="sbt-entry" class="input" type="number" step="any" min="-100" max="100"><span class="hint">Starts at your entry timing level. <a href="#weights" data-goto="weights">Edit in Weights</a></span></div>
+                        <div class="field"><label for="sbt-exit">Exit when score at or below</label><input id="sbt-exit" class="input" type="number" step="any" min="-100" max="100" value="0"><span class="hint">Starts at your exit timing level. <a href="#weights" data-goto="weights">Edit in Weights</a></span></div>
+                        <div class="field"><label for="sbt-horizon">Calibration horizon (bars)</label><input id="sbt-horizon" class="input" type="number" step="1" min="1" max="252" value="20"></div>
+                        <div class="field"><label for="sbt-years">Years (blank = all)</label><input id="sbt-years" class="input" type="number" step="1" min="1" max="20" placeholder="All"></div>
+                    </div>
+                    <div class="field">
+                        <label>Agents replayed</label>
+                        <div class="check-row" id="sbt-agents"></div>
+                        <span class="hint" id="sbt-agents-hint"></span>
+                    </div>
+                    <div class="toolbar-inline">
+                        <button class="btn btn-primary" id="sbt-run" type="submit" disabled data-init-gate>Run backtest</button>
+                        <p class="hint neg form-error" id="sbt-error" role="alert" data-form-error hidden></p>
+                    </div>
+                </form>
+
+                <div class="results" id="sbt-results" hidden>
+                    <div class="stat-row" id="sbt-stats"></div>
+                    <div class="notes" id="sbt-notes"></div>
+                    <div class="card">
+                        <div class="card-head"><h3>Equity: score strategy vs buy and hold</h3><div class="legend" id="sbt-equity-legend"></div></div>
+                        <div class="chart chart-md" id="sbt-equity-chart"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>Composite score over time</h3><div class="legend" id="sbt-score-legend"></div></div>
+                        <div class="chart chart-sm" id="sbt-score-chart"></div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-head"><h3>Calibration</h3><span class="muted small" id="sbt-calibration-caption"></span></div>
+                            <div class="table-wrap"><table class="table" id="sbt-calibration"></table></div>
+                            <p class="hint" id="sbt-ic"></p>
+                        </div>
+                        <div class="card">
+                            <div class="card-head"><h3>Trades</h3><span class="muted small" id="sbt-trades-caption"></span></div>
+                            <div class="table-wrap table-scroll"><table class="table" id="sbt-trades"></table></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p><a href="#portfolio" data-goto="portfolio">Add your portfolio</a>, set your weights, check them against buy and hold. Owner score decides, entry timing informs. Decision support only, not financial advice. Data from Yahoo Finance, FRED and SEC EDGAR; quotes may be delayed. <button class="link-btn" id="about-toggle" type="button" aria-expanded="false" aria-controls="about-data">Your data and costs</button></p>
+        <div class="card notes about-data" id="about-data" hidden>
+            <h3>Your data and costs</h3>
+            <ul>
+                <li>Free, no account. FastValue runs on your own computer.</li>
+                <li>What leaves this computer: only instrument identifiers (tickers, ISINs and company or fund names), sent to the public sources listed below for prices, filings, news and insider trades, plus your SEC contact email in the request header to sec.gov if you set one. Your holdings, amounts, cash, notes and broker file never leave it.</li>
+                <li>Your broker file is read in memory and never stored; only the cleaned bookings are kept, on this computer.</li>
+                <li>Optional: free Alpha Vantage or Finnhub keys add news sources. Quotes may be delayed.</li>
+                <li>Delete: Remove the import forgets the export; Delete all my FastValue data clears everything FastValue keeps.</li>
+            </ul>
+            <h4>Sources</h4>
+            <ul id="about-sources"></ul>
+            <h4>How it works</h4>
+            <p>Analyze scores one company. Watchlist ranks the companies you follow by owner score. Portfolio reviews what you own and says what to do with each holding. Weights sets how much each part of the analysis counts. Backtest tests your weights on the past and replays your own trades in My track record.</p>
+            <p class="muted small" id="about-version"></p>
+            <div class="head-actions">
+                <button class="btn btn-danger" id="data-delete" type="button">Delete all my FastValue data</button>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

@@ -1,7 +1,7 @@
 [project]
-name = "quant"
+name = "fastvalue"
 version = "0.1.0"
-description = "Modular locally hosted backtesting framework"
+description = "Fast decision desk for a stock portfolio: owner-first scoring with your weights, backtested against buy and hold"
 requires-python = ">=3.10"
 dependencies = [
     "pandas>=2.0",
@@ -10,6 +10,7 @@ dependencies = [
     "vectorbt>=0.26",
     "quantstats>=0.0.62",
     "pyarrow>=14.0",
+    "flask>=3.0",
 ]
 
 [project.optional-dependencies]
@@ -23,7 +24,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["config*", "data*", "strategies*", "core*", "analysis*"]
+include = ["agents*", "config*", "data*", "strategies*", "core*", "analysis*", "web*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

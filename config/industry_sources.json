@@ -1,0 +1,573 @@
+{
+ "version": 1,
+ "checked": "2026-10-07",
+ "general": [
+  {
+   "name": "World Economic Outlook",
+   "publisher": "IMF",
+   "url": "https://www.imf.org/en/Publications/WEO",
+   "what": "Global and country growth and inflation forecasts, with risks.",
+   "cadence": "April and October, updates in January and July",
+   "free": true,
+   "conference": false
+  },
+  {
+   "name": "Eurosystem and ECB staff projections",
+   "publisher": "ECB",
+   "url": "https://www.ecb.europa.eu/press/projections/html/index.en.html",
+   "what": "Euro area growth, inflation and unemployment projections.",
+   "cadence": "quarterly",
+   "free": true,
+   "conference": false
+  },
+  {
+   "name": "FOMC calendar and Summary of Economic Projections",
+   "publisher": "Federal Reserve",
+   "url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+   "what": "US growth, inflation, unemployment and policy rate projections of FOMC members.",
+   "cadence": "March, June, September and December",
+   "free": true,
+   "conference": false
+  },
+  {
+   "name": "Global Economic Prospects",
+   "publisher": "World Bank",
+   "url": "https://www.worldbank.org/en/publication/global-economic-prospects",
+   "what": "Global and regional growth forecasts, with a focus on emerging markets.",
+   "cadence": "January and June",
+   "free": true,
+   "conference": false
+  },
+  {
+   "name": "Beige Book",
+   "publisher": "Federal Reserve",
+   "url": "https://www.federalreserve.gov/monetarypolicy/publications/beige-book-default.htm",
+   "what": "Anecdotal read of business conditions by sector across the 12 Fed districts.",
+   "cadence": "eight times a year",
+   "free": true,
+   "conference": false
+  },
+  {
+   "name": "Survey of Professional Forecasters",
+   "publisher": "Federal Reserve Bank of Philadelphia",
+   "url": "https://www.philadelphiafed.org/surveys-and-data/real-time-data-research/survey-of-professional-forecasters",
+   "what": "Consensus forecasts of US output, inflation and rates.",
+   "cadence": "quarterly",
+   "free": true,
+   "conference": false
+  }
+ ],
+ "sectors": {
+  "Technology": {
+   "sources": [
+    {
+     "name": "Global semiconductor sales",
+     "publisher": "Semiconductor Industry Association",
+     "url": "https://www.semiconductors.org/category/press-releases/",
+     "what": "Monthly worldwide chip sales and trend, as press releases.",
+     "cadence": "monthly",
+     "free": true,
+     "conference": false
+    },
+    {
+     "name": "CES",
+     "publisher": "Consumer Technology Association",
+     "url": "https://www.ces.tech/",
+     "what": "Consumer technology showcase where hardware and platform companies present roadmaps.",
+     "cadence": "January, yearly",
+     "free": true,
+     "conference": true
+    },
+    {
+     "name": "Computex",
+     "publisher": "TAITRA and TCA",
+     "url": "https://www.computex.biz/",
+     "what": "Taipei trade show for PC, chip and AI hardware makers.",
+     "cadence": "yearly",
+     "free": true,
+     "conference": true
+    }
+   ],
+   "industries": {
+    "Semiconductors": [
+     {
+      "name": "World Semiconductor Trade Statistics",
+      "publisher": "WSTS",
+      "url": "https://www.wsts.org/",
+      "what": "Semiconductor market forecast by product and region (press releases are free, full tables are for members).",
+      "cadence": "spring and autumn",
+      "free": true,
+      "conference": false
+     }
+    ],
+    "Solar": [
+     {
+      "name": "Global electricity data",
+      "publisher": "Ember",
+      "url": "https://www.ember-energy.org/data/",
+      "what": "Solar and wind build-out and electricity mix data and analysis.",
+      "cadence": "monthly and yearly",
+      "free": true,
+      "conference": false
+     }
+    ]
+   }
+  },
+  "Healthcare": {
+   "sources": [
+    {
+     "name": "National health expenditure projections",
+     "publisher": "CMS",
+     "url": "https://www.cms.gov/data-research/statistics-trends-and-reports/national-health-expenditure-data/projected",
+     "what": "Ten-year projections of US health spending by payer and service.",
+     "cadence": "yearly",
+     "free": true,
+     "conference": false
+    },
+    {
+     "name": "IQVIA Institute reports",
+     "publisher": "IQVIA Institute for Human Data Science",
+     "url": "https://www.iqvia.com/insights/the-iqvia-institute",
+     "what": "Medicine spending, drug launches and R&D pipeline outlooks.",
+     "cadence": "yearly, several reports",
+     "free": true,
+     "conference": false
+    },
+    {
+     "name": "J.P. Morgan Healthcare Conference",
+     "publisher": "J.P. Morgan",
+     "url": "https://www.jpmorgan.com/about-us/events-conferences/health-care-conference",
+     "what": "Largest yearly investor meeting where pharma, biotech and medtech companies present guidance.",
+     "cadence": "January, yearly",
+     "free": true,
+     "conference": true
+    }
+   ],
+   "industries": {
+    "Healthcare Plans": [
+     {
+      "name": "National health expenditure projections",
+      "publisher": "CMS",
+      "url": "https://www.cms.gov/data-research/statistics-trends-and-reports/national-health-expenditure-data/projected",
+      "what": "Projected growth of Medicare, Medicaid and private insurance spending.",
+      "cadence": "yearly",
+      "free": true,
+      "conference": false
+     }
+    ]
+   }
+  },
+  "Financial Services": {
+   "sources": [
+    {
+     "name": "Senior Loan Officer Opinion Survey",
+     "publisher": "Federal Reserve",
+     "url": "https://www.federalreserve.gov/data/sloos.htm",
+     "what": "Bank lending standards and loan demand.",
+     "cadence": "quarterly",
+     "free": true,
+     "conference": false
+    },
+    {
+     "name": "Quarterly Banking Profile",
+     "publisher": "FDIC",
+     "url": "https://www.fdic.gov/quarterly-banking-profile",
+     "what": "Earnings, loan growth and asset quality of US banks.",
+     "cadence": "quarterly",
+     "free": true,
+     "conference": false
+    }
+   ],
+   "industries": {}
+  },
+  "Consumer Cyclical": {
+   "sources": [
+    {
+     "name": "Research and insights",
+     "publisher": "National Retail Federation",
+     "url": "https://nrf.com/research-insights",
+     "what": "US retail sales forecasts and consumer spending outlook.",
+     "cadence": "yearly forecast, monthly updates",
+     "free": true,
+     "conference": false
+    },
+    {
+     "name": "Monthly retail trade",
+     "publisher": "US Census Bureau",
+     "url": "https://www.census.gov/retail/sales.html",
+     "what": "Advance estimates of US retail and food service sales.",
+     "cadence": "monthly",
+     "free": true,
+     "conference": false
+    }
+   ],
+   "industries": {
+    "Auto Manufacturers": [
+     {
+      "name": "Global EV Outlook",
+      "publisher": "IEA",
+      "url": "https://www.iea.org/reports/global-ev-outlook-2026",
+      "what": "Electric vehicle sales, battery demand and policy scenarios to 2030.",
+      "cadence": "yearly",
+      "free": true,
+      "conference": false
+     },
+     {
+      "name": "Passenger car registrations",
+      "publisher": "ACEA",
+      "url": "https://www.acea.auto/nav/?content=passenger-car-registrations",
+      "what": "New car registrations in the EU, by country and powertrain.",
+      "cadence": "monthly",
+      "free": true,
+      "conference": false
+     }
+    ],
+    "Auto Parts": [
+     {
+      "name": "Passenger car registrations",
+      "publisher": "ACEA",
+      "url": "https://www.acea.auto/nav/?content=passenger-car-registrations",
+      "what": "New car registrations in the EU, a read on volume for suppliers.",
+      "cadence": "monthly",
+      "free": true,
+      "conference": false
+     }
+    ],
+    "Residential Construction": [
+     {
+      "name": "Housing Market Index",
+      "publisher": "NAHB",
+      "url": "https://www.nahb.org/news-and-economics/housing-economics/indices/housing-market-index",
+      "what": "Homebuilder confidence on current and expected sales.",
+      "cadence": "monthly",
+      "free": true,
+      "conference": false
+     },
+     {
+      "name": "New residential construction",
+      "publisher": "US Census Bureau",
+      "url": "https://www.census.gov/construction/nrc/current/index.html",
+      "what": "Housing starts and permits.",
+      "cadence": "monthly",
+      "free": true,
+      "conference": false
+     }
+    ],
+    "Apparel Retail": [
+     {
+      "name": "Research and insights",
+      "publisher": "National Retail Federation",
+      "url": "https://nrf.com/research-insights",
+      "what": "US retail sales forecasts and consumer spending outlook.",
+      "cadence": "yearly forecast, monthly updates",
+      "free": true,
+      "conference": false
+     }
+    ]
+   }
+  },
+  "Consumer Defensive": {
+   "sources": [
+    {
+     "name": "Food Price Outlook",
+     "publisher": "USDA Economic Research Service",
+     "url": "https://www.ers.usda.gov/data-products/food-price-outlook",
+     "what": "Forecast of US food price inflation by category.",
+     "cadence": "monthly",
+     "free": true,
+     "conference": false
+    }
+   ],
+   "industries": {
+    "Farm Products": [
+     {
+      "name": "Food price monitoring",
+      "publisher": "FAO",
+      "url": "https://www.fao.org/worldfoodsituation/csdb/en/",
+      "what": "World food commodity prices and supply outlook.",
+      "cadence": "monthly",
+      "free": true,
+      "conference": false
+     }
+    ],
+    "Packaged Foods": [
+     {
+      "name": "Food Price Outlook",
+      "publisher": "USDA Economic Research Service",
+      "url": "https://www.ers.usda.gov/data-products/food-price-outlook",
+      "what": "Forecast of US food price inflation by category.",
+      "cadence": "monthly",
+      "free": true,
+      "conference": false
+     }
+    ],
+    "Grocery Stores": [
+     {
+      "name": "Food Price Outlook",
+      "publisher": "USDA Economic Research Service",
+      "url": "https://www.ers.usda.gov/data-products/food-price-outlook",
+      "what": "Forecast of food-at-home price inflation.",
+      "cadence": "monthly",
+      "free": true,
+      "conference": false
+     }
+    ]
+   }
+  },
+  "Industrials": {
+   "sources": [
+    {
+     "name": "Industrial production and capacity utilization",
+     "publisher": "Federal Reserve",
+     "url": "https://www.federalreserve.gov/releases/g17/current/default.htm",
+     "what": "Output of US manufacturing, mining and utilities.",
+     "cadence": "monthly",
+     "free": true,
+     "conference": false
+    },
+    {
+     "name": "Manufacturing Business Outlook Survey",
+     "publisher": "Federal Reserve Bank of Philadelphia",
+     "url": "https://www.philadelphiafed.org/surveys-and-data/regional-economic-analysis/manufacturing-business-outlook-survey",
+     "what": "Factory activity and six-month expectations in the Third District.",
+     "cadence": "monthly",
+     "free": true,
+     "conference": false
+    }
+   ],
+   "industries": {
+    "Airlines": [
+     {
+      "name": "Economics publications",
+      "publisher": "IATA",
+      "url": "https://www.iata.org/en/publications/economics/",
+      "what": "Industry outlook for airline traffic and profit, plus monthly traffic data.",
+      "cadence": "semi-annual outlook, monthly data",
+      "free": true,
+      "conference": false
+     },
+     {
+      "name": "Annual general meeting",
+      "publisher": "IATA",
+      "url": "https://www.iata.org/en/events/agm/",
+      "what": "Where the airline industry's yearly profit forecast is presented.",
+      "cadence": "June, yearly",
+      "free": true,
+      "conference": true
+     }
+    ],
+    "Aerospace & Defense": [
+     {
+      "name": "FAA Aerospace Forecast",
+      "publisher": "FAA",
+      "url": "https://www.faa.gov/data_research/aviation/aerospace_forecasts",
+      "what": "US air traffic, fleet and aircraft deliveries forecast.",
+      "cadence": "yearly",
+      "free": true,
+      "conference": false
+     }
+    ],
+    "Airports & Air Services": [
+     {
+      "name": "FAA Aerospace Forecast",
+      "publisher": "FAA",
+      "url": "https://www.faa.gov/data_research/aviation/aerospace_forecasts",
+      "what": "US air traffic and fleet forecast.",
+      "cadence": "yearly",
+      "free": true,
+      "conference": false
+     }
+    ]
+   }
+  },
+  "Energy": {
+   "sources": [
+    {
+     "name": "Short-Term Energy Outlook",
+     "publisher": "US Energy Information Administration",
+     "url": "https://www.eia.gov/outlooks/steo/",
+     "what": "Oil, gas, coal, power and renewables prices and volumes for the next two years.",
+     "cadence": "monthly",
+     "free": true,
+     "conference": false
+    },
+    {
+     "name": "Rig count",
+     "publisher": "Baker Hughes",
+     "url": "https://www.bakerhughes.com/rig-count",
+     "what": "Active drilling rigs, a read on producer spending.",
+     "cadence": "weekly",
+     "free": true,
+     "conference": false
+    }
+   ],
+   "industries": {
+    "Oil & Gas E&P": [
+     {
+      "name": "Rig count",
+      "publisher": "Baker Hughes",
+      "url": "https://www.bakerhughes.com/rig-count",
+      "what": "Active drilling rigs by basin.",
+      "cadence": "weekly",
+      "free": true,
+      "conference": false
+     }
+    ],
+    "Oil & Gas Equipment & Services": [
+     {
+      "name": "Rig count",
+      "publisher": "Baker Hughes",
+      "url": "https://www.bakerhughes.com/rig-count",
+      "what": "Active drilling rigs, the demand base for service companies.",
+      "cadence": "weekly",
+      "free": true,
+      "conference": false
+     }
+    ],
+    "Oil & Gas Drilling": [
+     {
+      "name": "Rig count",
+      "publisher": "Baker Hughes",
+      "url": "https://www.bakerhughes.com/rig-count",
+      "what": "Active drilling rigs by basin.",
+      "cadence": "weekly",
+      "free": true,
+      "conference": false
+     }
+    ]
+   }
+  },
+  "Basic Materials": {
+   "sources": [
+    {
+     "name": "Mineral Commodity Summaries",
+     "publisher": "USGS",
+     "url": "https://www.usgs.gov/centers/national-minerals-information-center/mineral-commodity-summaries",
+     "what": "Supply, demand and reserves for about 90 minerals.",
+     "cadence": "yearly",
+     "free": true,
+     "conference": false
+    }
+   ],
+   "industries": {
+    "Gold": [
+     {
+      "name": "Gold Demand Trends",
+      "publisher": "World Gold Council",
+      "url": "https://www.gold.org/goldhub/research/gold-demand-trends",
+      "what": "Quarterly gold demand by jewellery, investment, central banks and technology.",
+      "cadence": "quarterly",
+      "free": true,
+      "conference": false
+     }
+    ],
+    "Steel": [
+     {
+      "name": "Press releases",
+      "publisher": "worldsteel",
+      "url": "https://worldsteel.org/media/press-releases/",
+      "what": "Monthly crude steel output and the twice-yearly short range outlook on steel demand.",
+      "cadence": "monthly",
+      "free": true,
+      "conference": false
+     }
+    ],
+    "Copper": [
+     {
+      "name": "Mineral Commodity Summaries",
+      "publisher": "USGS",
+      "url": "https://www.usgs.gov/centers/national-minerals-information-center/mineral-commodity-summaries",
+      "what": "Copper supply, demand and reserves.",
+      "cadence": "yearly",
+      "free": true,
+      "conference": false
+     }
+    ]
+   }
+  },
+  "Communication Services": {
+   "sources": [
+    {
+     "name": "MWC Barcelona",
+     "publisher": "GSMA",
+     "url": "https://www.mwcbarcelona.com/",
+     "what": "Mobile industry show where operators and vendors present network and device outlooks.",
+     "cadence": "February or March, yearly",
+     "free": true,
+     "conference": true
+    }
+   ],
+   "industries": {}
+  },
+  "Utilities": {
+   "sources": [
+    {
+     "name": "Short-Term Energy Outlook",
+     "publisher": "US Energy Information Administration",
+     "url": "https://www.eia.gov/outlooks/steo/",
+     "what": "US electricity demand, generation mix and power prices.",
+     "cadence": "monthly",
+     "free": true,
+     "conference": false
+    },
+    {
+     "name": "Reliability assessments",
+     "publisher": "NERC",
+     "url": "https://www.nerc.com/pa/RAPA/ra/Pages/default.aspx",
+     "what": "Seasonal and long-term outlook for grid supply against demand.",
+     "cadence": "seasonal and yearly",
+     "free": true,
+     "conference": false
+    }
+   ],
+   "industries": {
+    "Utilities - Renewable": [
+     {
+      "name": "Global electricity data",
+      "publisher": "Ember",
+      "url": "https://www.ember-energy.org/data/",
+      "what": "Wind and solar generation and capacity trends.",
+      "cadence": "monthly and yearly",
+      "free": true,
+      "conference": false
+     }
+    ]
+   }
+  },
+  "Real Estate": {
+   "sources": [
+    {
+     "name": "Existing home sales",
+     "publisher": "National Association of Realtors",
+     "url": "https://www.nar.realtor/research-and-statistics/housing-statistics/existing-home-sales",
+     "what": "US home sales, prices and inventory.",
+     "cadence": "monthly",
+     "free": true,
+     "conference": false
+    },
+    {
+     "name": "Data and research",
+     "publisher": "Nareit",
+     "url": "https://www.reit.com/data-research",
+     "what": "REIT earnings, returns and sector fundamentals.",
+     "cadence": "quarterly",
+     "free": true,
+     "conference": false
+    }
+   ],
+   "industries": {
+    "Real Estate - Development": [
+     {
+      "name": "Housing Market Index",
+      "publisher": "NAHB",
+      "url": "https://www.nahb.org/news-and-economics/housing-economics/indices/housing-market-index",
+      "what": "Homebuilder confidence on current and expected sales.",
+      "cadence": "monthly",
+      "free": true,
+      "conference": false
+     }
+    ]
+   }
+  }
+ }
+}

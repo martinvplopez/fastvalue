@@ -84,3 +84,63 @@ def test_fetch_ohlcv_uses_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     result = fetch_ohlcv(["SPY"], start="2015-01-01", end="2015-01-10")
     assert "SPY" in result
     assert len(result["SPY"]) == 7
+
+
+def test_a_short_request_never_shrinks_a_stale_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("data.fetcher.DATA_DIR", tmp_path)
+    old = pd.date_range("2016-01-01", "2026-08-31", freq="B")
+    frame = lambda idx: pd.DataFrame({"open": 1.0, "high": 1.0, "low": 1.0, "close": 1.0, "volume": 1e6}, index=idx)  # noqa: E731
+    frame(old).to_parquet(tmp_path / "XYZ.parquet")
+    asked = {}
+
+    def download(symbol, start, end):
+        asked["start"] = start
+        return frame(pd.date_range(start, "2026-10-02", freq="B"))
+
+    monkeypatch.setattr("data.fetcher._download_ticker", download)
+    out = fetch_ohlcv(["XYZ"], start="2026-09-15")
+    assert asked["start"] == "2026-08-24"  # from a week before the cached end, not just the requested window
+    assert out["XYZ"].index.min() == pd.Timestamp("2026-09-15")
+    kept = pd.read_parquet(tmp_path / "XYZ.parquet")
+    assert kept.index.min() == pd.Timestamp("2016-01-01") and kept.index.max() == pd.Timestamp("2026-10-02")
+    assert not kept.index.duplicated().any()
+
+
+def _bars(idx: pd.DatetimeIndex, close: float = 1.0) -> pd.DataFrame:
+    return pd.DataFrame({"open": close, "high": close, "low": close, "close": close, "volume": 1e6}, index=idx)
+
+
+def test_an_uncoverable_start_downloads_the_full_range_once_a_day(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # The asked start is a Sunday; the first session is the Monday after, so no cache file can ever "cover" it.
+    monkeypatch.setattr("data.fetcher.DATA_DIR", tmp_path)
+    today = pd.Timestamp.today().normalize()
+    start = (today - pd.Timedelta(days=400) - pd.Timedelta(days=(today - pd.Timedelta(days=400)).weekday() + 1))
+    assert start.weekday() == 6
+    calls = []
+
+    def download(symbol, frm, end):
+        calls.append(frm)
+        return _bars(pd.bdate_range(frm, today))
+
+    monkeypatch.setattr("data.fetcher._download_ticker", download)
+    first = fetch_ohlcv(["XYZ"], start=start.strftime("%Y-%m-%d"))
+    second = fetch_ohlcv(["XYZ"], start=start.strftime("%Y-%m-%d"))
+    assert calls == [start.strftime("%Y-%m-%d")]  # today: one full download per call
+    assert first["XYZ"].equals(second["XYZ"]) and first["XYZ"].index.min() > start
+    fetch_ohlcv(["XYZ"], start=start.strftime("%Y-%m-%d"), force_refresh=True)
+    assert len(calls) == 2  # a forced refresh still downloads
+
+
+def test_several_tickers_download_side_by_side_and_keep_their_order(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("data.fetcher.DATA_DIR", tmp_path)
+    today = pd.Timestamp.today().normalize()
+
+    def download(symbol, frm, end):
+        if symbol == "BAD":
+            raise DataFetchError("no data")
+        return _bars(pd.bdate_range(frm, today), close=float(len(symbol)))
+
+    monkeypatch.setattr("data.fetcher._download_ticker", download)
+    out = fetch_ohlcv(["ccc", "BAD", "aa", "B", "aa"], start=(today - pd.Timedelta(days=30)).strftime("%Y-%m-%d"))
+    assert list(out) == ["CCC", "AA", "B"]
+    assert [float(out[t]["close"].iloc[-1]) for t in out] == [3.0, 2.0, 1.0]

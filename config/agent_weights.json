@@ -1,0 +1,107 @@
+{
+  "version": 2,
+  "description": "Default scoring configuration. Two layers: the owner score (owner_weights, owner_thresholds; fundamentals and shareholder agents) decides BUY/HOLD/SELL on a 12-month horizon and does not depend on the regime. The timing panel (regime_weights, thresholds; trend, volume, options, pullback) is summarized as favorable/neutral/unfavorable for entry timing and sizing and has no vote. Since D-40 (October 2026) the shipped timing profile is the same in every regime and gives the macro agent 0, because per-regime profiles and the market-wide macro score added nothing in or out of sample; the regime is shown as a market risk reading. The timing cut-offs (FAVORABLE at +6.1, UNFAVORABLE at -40) keep the label's shares where they were. Weights are relative: each profile is renormalized over the agents that are enabled and have data. Edit from the Weights tab (saved to data/store/agent_weights.json) or here to change the shipped defaults.",
+  "roles_note": "roles: agent_key -> owner (decides), timing (informs, no vote) or info (shown, not scored). Empty means each agent keeps its class role. An agent moved to a new layer starts at weight 0 there. agent_order and layer_order set the display order only.",
+  "roles": {},
+  "layer_order": [
+    "owner",
+    "timing",
+    "info"
+  ],
+  "agent_order": [
+    "fundamentals",
+    "shareholder",
+    "competitive",
+    "insider",
+    "momentum",
+    "volume",
+    "pullback",
+    "options",
+    "macro",
+    "sentiment"
+  ],
+  "owner_weights": {
+    "shareholder": 0.55,
+    "fundamentals": 0.45,
+    "insider": 0.0,
+    "competitive": 0.0
+  },
+  "owner_thresholds": {
+    "strong_buy": 45.0,
+    "buy": 15.0,
+    "sell": -15.0,
+    "strong_sell": -45.0
+  },
+  "owner_max_ev_to_fcf": 35.0,
+  "thresholds": {
+    "strong_buy": 45.0,
+    "buy": 6.1,
+    "sell": -40.0,
+    "strong_sell": -45.0
+  },
+  "confidence_floor": 0.4,
+  "fallback_regime": "CORRECTION",
+  "enabled": {
+    "momentum": true,
+    "volume": true,
+    "options": true,
+    "insider": true,
+    "fundamentals": true,
+    "macro": true,
+    "sentiment": true,
+    "shareholder": true,
+    "pullback": true,
+    "competitive": true
+  },
+  "score_scales": {},
+  "regime_weights": {
+    "BULL": {
+      "momentum": 0.225,
+      "volume": 0.1375,
+      "options": 0.15,
+      "macro": 0.0,
+      "pullback": 0.15,
+      "sentiment": 0.0,
+      "fundamentals": 0.0,
+      "shareholder": 0.0,
+      "insider": 0.0,
+      "competitive": 0.0
+    },
+    "CORRECTION": {
+      "momentum": 0.225,
+      "volume": 0.1375,
+      "options": 0.15,
+      "macro": 0.0,
+      "pullback": 0.15,
+      "sentiment": 0.0,
+      "fundamentals": 0.0,
+      "shareholder": 0.0,
+      "insider": 0.0,
+      "competitive": 0.0
+    },
+    "BEAR": {
+      "momentum": 0.225,
+      "volume": 0.1375,
+      "options": 0.15,
+      "macro": 0.0,
+      "pullback": 0.15,
+      "sentiment": 0.0,
+      "fundamentals": 0.0,
+      "shareholder": 0.0,
+      "insider": 0.0,
+      "competitive": 0.0
+    },
+    "CRISIS": {
+      "momentum": 0.225,
+      "volume": 0.1375,
+      "options": 0.15,
+      "macro": 0.0,
+      "pullback": 0.15,
+      "sentiment": 0.0,
+      "fundamentals": 0.0,
+      "shareholder": 0.0,
+      "insider": 0.0,
+      "competitive": 0.0
+    }
+  }
+}

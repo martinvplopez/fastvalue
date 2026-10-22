@@ -1,0 +1,285 @@
+{
+  "version": 1,
+  "description": "Market-panel evidence behind 'Your history against the weights'. S&P 500 numbers only, copied from the study files named in each block; no personal data. Read generically by core/weights_review.py: each condition lists panel buckets with the owner's tag buckets they correspond to, a primary value (value) and a second horizon (alt). Update the numbers here after a study rerun; nothing in the app changes scoring from this file.",
+  "studies": {
+    "all_agents": {
+      "name": "All-agents study (core/all_agents_study.py)",
+      "universe": "S&P 500 point-in-time company-months",
+      "period": "2011-02 to 2026-08",
+      "date": "2026-09-27",
+      "source": "analysis/output/all_agents_study.json, research_results.md section 2",
+      "measures": {
+        "value": "next month, annualized",
+        "alt": "next 12 months, not annualized"
+      }
+    },
+    "timing_validation": {
+      "name": "Timing validation (core/timing_validation.py)",
+      "universe": "32 tickers the pullback idea was not tuned on, weekly",
+      "period": "10 years to 2026-09",
+      "date": "2026-09-27",
+      "source": "analysis/output/timing_validation.json, research_results.md section 3",
+      "measures": {
+        "ic": "rank IC of the agent's score against forward returns"
+      }
+    },
+    "vix_rule": {
+      "name": "VIX rule (decision_log T-09)",
+      "universe": "SPY",
+      "period": "1993 to 2026",
+      "date": "2026-09",
+      "source": "data/macro_data.py note, decision_log T-09",
+      "measures": {
+        "alt": "SPY return over the next 12 months"
+      }
+    },
+    "regime_study": {
+      "name": "Market regime study (core/regime_study.py)",
+      "universe": "S&P 500 point-in-time company-months, owner BUYs by the regime at each month-end",
+      "period": "2011-01 to 2026-08",
+      "date": "2026-10-07",
+      "source": "analysis/output/regime_study.json, research_results.md, Market regime study",
+      "measures": {
+        "value": "next month, annualized",
+        "alt": "next 12 months, not annualized",
+        "t": "Newey-West t of the monthly series",
+        "rows": "month-ends in the regime"
+      }
+    }
+  },
+  "conditions": {
+    "distance from the 52-week high": {
+      "study": "all_agents",
+      "population": "owner BUYs",
+      "measure": "value",
+      "mapping": "approximate",
+      "buckets": [
+        {
+          "label": "30%+ below the high",
+          "tag_buckets": [
+            "20 to 40% below the high",
+            "40%+ below the high"
+          ],
+          "rows": 3036,
+          "value": 0.223,
+          "alt": 0.2208,
+          "t": 3.56
+        },
+        {
+          "label": "15 to 30% below the high",
+          "tag_buckets": [],
+          "rows": 5423,
+          "value": 0.1521,
+          "alt": 0.145,
+          "t": 3.44
+        },
+        {
+          "label": "5 to 15% below the high",
+          "tag_buckets": [
+            "5 to 20% below the high"
+          ],
+          "rows": 7224,
+          "value": 0.1483,
+          "alt": 0.1338,
+          "t": 4.32
+        },
+        {
+          "label": "within 5% of the high",
+          "tag_buckets": [
+            "within 5% of the 52-week high"
+          ],
+          "rows": 5722,
+          "value": 0.145,
+          "alt": 0.1405,
+          "t": 5.01
+        }
+      ]
+    },
+    "trend": {
+      "study": "all_agents",
+      "population": "owner BUYs",
+      "measure": "value",
+      "mapping": "approximate",
+      "note": "The panel's trend is the 50/200-day structure; the tag is price against the 200-day mean.",
+      "buckets": [
+        {
+          "label": "Uptrend (price and 50-day above the 200-day)",
+          "tag_buckets": [
+            "above its 200-day mean"
+          ],
+          "rows": 10842,
+          "value": 0.1673,
+          "alt": 0.14,
+          "t": 4.97
+        },
+        {
+          "label": "Mixed",
+          "tag_buckets": [],
+          "rows": 3224,
+          "value": 0.1566,
+          "alt": 0.1535,
+          "t": 3.68
+        },
+        {
+          "label": "Downtrend (price and 50-day below the 200-day)",
+          "tag_buckets": [
+            "below its 200-day mean"
+          ],
+          "rows": 7339,
+          "value": 0.1589,
+          "alt": 0.1625,
+          "t": 3.64
+        }
+      ]
+    },
+    "FastValue owner rating at entry": {
+      "study": "all_agents",
+      "population": "all company-months by owner decision",
+      "measure": "value",
+      "mapping": "exact",
+      "buckets": [
+        {
+          "label": "BUY",
+          "tag_buckets": [
+            "BUY"
+          ],
+          "rows": 19665,
+          "value": 0.1706,
+          "alt": 0.1566,
+          "t": 4.65
+        },
+        {
+          "label": "HOLD",
+          "tag_buckets": [
+            "HOLD"
+          ],
+          "rows": 28123,
+          "value": 0.1427,
+          "alt": 0.1409,
+          "t": 4.07
+        },
+        {
+          "label": "SELL",
+          "tag_buckets": [
+            "SELL"
+          ],
+          "rows": 14789,
+          "value": 0.1373,
+          "alt": 0.1339,
+          "t": 3.39
+        }
+      ]
+    },
+    "move in the month before": {
+      "study": "all_agents",
+      "population": "all company-months",
+      "kind": "factor",
+      "mapping": "factor",
+      "factor": "1-month return (reversal check)",
+      "ic": -0.0072,
+      "ic_t": -0.66,
+      "ic_12m": 0.0049,
+      "ic_12m_t": 0.56,
+      "note": "Rank IC of last month's return against the next month: no reversal or continuation the panel can measure."
+    },
+    "VIX": {
+      "study": "vix_rule",
+      "population": "SPY",
+      "kind": "note",
+      "mapping": "none",
+      "note": "12 months after the first close above 30, SPY returned +8.0% against +12.1% on an average day; after a first close above 40, +22.5%. The panel is SPY itself, not companies at the entry level, so it has no bucket to compare with the tag.",
+      "values": {
+        "after_30": 0.08,
+        "after_40": 0.225,
+        "average_day": 0.121
+      }
+    }
+  },
+  "by_regime": {
+    "study": "regime_study",
+    "population": "owner BUYs",
+    "measure": "value",
+    "mapping": "exact",
+    "regime_source": "data.macro_data.compute_macro_snapshot as of each month-end (the same classifier the app runs)",
+    "supported": false,
+    "note": "The regime study found no reliable difference for companies at or above the entry level between regimes: stress months (BEAR, CRISIS) led calm ones by 6.7 points over 12 months (t 1.5, six episodes, one of them carries it), and in stress months those companies did no better than other stocks.",
+    "buckets": [
+      {
+        "label": "BULL",
+        "tag_buckets": [
+          "BULL"
+        ],
+        "rows": 112,
+        "value": 0.1121,
+        "alt": 0.1386,
+        "t": 2.88
+      },
+      {
+        "label": "CORRECTION",
+        "tag_buckets": [
+          "CORRECTION"
+        ],
+        "rows": 37,
+        "value": 0.154,
+        "alt": 0.1469,
+        "t": 1.76
+      },
+      {
+        "label": "BEAR",
+        "tag_buckets": [
+          "BEAR"
+        ],
+        "rows": 20,
+        "value": 0.1941,
+        "alt": 0.1834,
+        "t": 1.1
+      },
+      {
+        "label": "CRISIS",
+        "tag_buckets": [
+          "CRISIS"
+        ],
+        "rows": 19,
+        "value": 0.4824,
+        "alt": 0.2324,
+        "t": 2.79
+      }
+    ],
+    "inside_regime": {}
+  },
+  "agents": {
+    "owner": {
+      "study": "all_agents",
+      "text": "Owner score: rank IC at 12 months +0.056 (t 3.1); top minus bottom quintile +4.2% a year, +5.8% in the first half and +2.7% in the second.",
+      "ic": 0.0564,
+      "ic_t": 3.07,
+      "horizon": "12 months"
+    },
+    "pullback": {
+      "study": "timing_validation",
+      "ic": 0.0194,
+      "ic_t": 2.39,
+      "horizon": "60 sessions",
+      "text": "Out of sample IC +0.019 at 60 sessions (t 2.4), positive on 66% of tickers; buys at or above the entry level made 20.3% a year the next month on a pullback in an uptrend, against 9.7% when the price was extended."
+    },
+    "momentum": {
+      "study": "timing_validation",
+      "ic": -0.0822,
+      "ic_t": -4.06,
+      "horizon": "60 sessions",
+      "text": "Out of sample IC -0.082 at 60 sessions (t -4.1), negative on 78% of tickers: as an entry timer it points the wrong way, so it describes the trend and does not time entries."
+    },
+    "volume": {
+      "study": "timing_validation",
+      "ic": -0.0839,
+      "ic_t": -4.14,
+      "horizon": "60 sessions",
+      "text": "Out of sample IC -0.084 at 60 sessions (t -4.1): the same backwards reading as momentum."
+    },
+    "macro": {
+      "study": "regime_study",
+      "horizon": "12 months",
+      "text": "The macro agent scores every company the same, so it cannot rank names. The regime study found that the regime orders market risk but does not predict which entries do better, that one timing profile does as well as the four per-regime profiles, and that taking the macro score out of the timing label changes nothing measurable."
+    }
+  }
+}

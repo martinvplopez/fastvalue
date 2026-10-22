@@ -7,3 +7,25 @@ __pycache__/
 data/cache/
 analysis/output/
 *.html
+data/store/
+!web/templates/*.html
+
+# Personal data: broker exports and anything derived from them never go to git.
+# Imports are stored under data/store/ (ignored above); reports under analysis/output/.
+*.csv
+*.tsv
+*.xlsx
+*.xls
+*.parquet
+*.db
+*.sqlite
+.env
+.env.*
+
+# Working notes and audits stay on this machine.
+decision_log.md
+next_steps.md
+UX_AUDIT.md
+ux-audit/
+.DS_Store
+research_results.md
