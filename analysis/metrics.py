@@ -8,35 +8,123 @@ import pandas as pd
 import quantstats as qs
 
 
-def compute_metrics(returns: pd.Series) -> dict[str, float]:
+def compute_metrics(
+    returns: pd.Series,
+    signals: pd.DataFrame | None = None,
+) -> dict[str, float]:
     """
-    Compute core performance metrics from a daily returns series.
+    Compute performance metrics from a daily returns series.
 
     Args:
         returns: Daily percentage returns (e.g. 0.01 = 1%).
+        signals: Optional DataFrame with ``entries`` / ``exits`` columns
+                 used to compute trade-level statistics.
 
     Returns:
-        Dict with keys: total_return, cagr, max_drawdown, sharpe.
+        Dict with keys: total_return, cagr, max_drawdown, sharpe,
+        sortino, calmar, win_rate, profit_factor, num_trades.
     """
+    empty: dict[str, float] = {
+        "total_return": 0.0,
+        "cagr": 0.0,
+        "max_drawdown": 0.0,
+        "sharpe": 0.0,
+        "sortino": 0.0,
+        "calmar": 0.0,
+        "win_rate": 0.0,
+        "profit_factor": 0.0,
+        "num_trades": 0,
+    }
+
     returns = returns.dropna()
     if returns.empty:
-        return {
-            "total_return": 0.0,
-            "cagr": 0.0,
-            "max_drawdown": 0.0,
-            "sharpe": 0.0,
-        }
+        return empty
 
     total_return = float((1 + returns).prod() - 1)
     cagr = float(qs.stats.cagr(returns))
     max_drawdown = float(qs.stats.max_drawdown(returns))
     sharpe = float(qs.stats.sharpe(returns))
 
+    # Sortino — penalises only downside volatility
+    downside = returns[returns < 0]
+    downside_std = float(downside.std()) if len(downside) > 1 else 0.0
+    mean_return = float(returns.mean())
+    sortino = (mean_return / downside_std * (252 ** 0.5)) if downside_std > 0 else 0.0
+
+    # Calmar — CAGR / |max drawdown|
+    calmar = (cagr / abs(max_drawdown)) if max_drawdown != 0 else 0.0
+
+    # Trade-level metrics from signals
+    win_rate = 0.0
+    profit_factor = 0.0
+    num_trades = 0
+
+    if signals is not None and "entries" in signals.columns and "exits" in signals.columns:
+        trade_stats = _compute_trade_metrics(returns, signals)
+        win_rate = trade_stats["win_rate"]
+        profit_factor = trade_stats["profit_factor"]
+        num_trades = trade_stats["num_trades"]
+
     return {
         "total_return": total_return,
         "cagr": cagr,
         "max_drawdown": max_drawdown,
         "sharpe": sharpe,
+        "sortino": sortino,
+        "calmar": calmar,
+        "win_rate": win_rate,
+        "profit_factor": profit_factor,
+        "num_trades": num_trades,
+    }
+
+
+def _compute_trade_metrics(
+    returns: pd.Series, signals: pd.DataFrame
+) -> dict[str, float]:
+    """
+    Compute win rate, profit factor, and trade count from signals.
+
+    A "trade" is defined as the period between an entry signal and the
+    next exit signal.
+    """
+    entries = signals["entries"].reindex(returns.index).fillna(False).astype(bool)
+    exits = signals["exits"].reindex(returns.index).fillna(False).astype(bool)
+
+    in_trade = False
+    trade_returns: list[float] = []
+    current_trade_return = 1.0
+
+    for i in range(len(returns)):
+        if entries.iloc[i] and not in_trade:
+            in_trade = True
+            current_trade_return = 1.0
+        if in_trade:
+            current_trade_return *= 1 + returns.iloc[i]
+        if exits.iloc[i] and in_trade:
+            trade_returns.append(current_trade_return - 1)
+            in_trade = False
+            current_trade_return = 1.0
+
+    # Close any open trade
+    if in_trade:
+        trade_returns.append(current_trade_return - 1)
+
+    num_trades = len(trade_returns)
+    if num_trades == 0:
+        return {"win_rate": 0.0, "profit_factor": 0.0, "num_trades": 0}
+
+    wins = [r for r in trade_returns if r > 0]
+    losses = [r for r in trade_returns if r <= 0]
+
+    win_rate = len(wins) / num_trades
+    gross_profit = sum(wins) if wins else 0.0
+    gross_loss = abs(sum(losses)) if losses else 0.0
+    profit_factor = (gross_profit / gross_loss) if gross_loss > 0 else float("inf") if gross_profit > 0 else 0.0
+
+    return {
+        "win_rate": win_rate,
+        "profit_factor": profit_factor,
+        "num_trades": num_trades,
     }
 
 
