@@ -2,6 +2,8 @@
 
 A multi-factor model of a complex adaptive system: the stock market.
 
+![Analyzing a company in FastValue: owner score, the points behind it, chart, company record and how the score was made](docs/fastvalue-analyze.gif)
+
 I'm a value investor who also checks technical signals before buying. I wanted to check entries in a systematic way, and fast, so: FastValue. It scores a company against my checklist of green flags, tells me whether now looks like a good moment to enter, and lets me backtest all of it, on the market and on my own trades.
 
 Why I built it and what I learned from it: [the blog post](https://martinvplopez.com/posts/fast-value/).
